@@ -13,20 +13,10 @@
 # limitations under the License.
 
 # Builder image
-FROM golang:1.18.1-alpine as builder
+FROM golang:1.18.4-bullseye as builder
 
-RUN apk add --no-cache \
-    wget \
-    make \
-    git \
-    gcc \
-    binutils-gold \
-    musl-dev
+RUN apt install -y wget make git gcc && mkdir -p /go/src/github.com/pingcap/tidb
 
-RUN wget -O /usr/local/bin/dumb-init https://github.com/Yelp/dumb-init/releases/download/v1.2.2/dumb-init_1.2.2_amd64 \
- && chmod +x /usr/local/bin/dumb-init
-
-RUN mkdir -p /go/src/github.com/pingcap/tidb
 WORKDIR /go/src/github.com/pingcap/tidb
 
 # Cache dependencies
@@ -42,16 +32,13 @@ COPY . .
 RUN make
 
 # Executable image
-FROM alpine
-
-RUN apk add --no-cache \
-    curl
+FROM debian:bullseye-slim
+RUN apt update && apt install -y bash curl netcat dumb-init && rm /bin/sh && ln -s /bin/bash /bin/sh && apt-get clean
 
 COPY --from=builder /go/src/github.com/pingcap/tidb/bin/tidb-server /tidb-server
-COPY --from=builder /usr/local/bin/dumb-init /usr/local/bin/dumb-init
 
 WORKDIR /
 
 EXPOSE 4000
 
-ENTRYPOINT ["/usr/local/bin/dumb-init", "/tidb-server"]
+ENTRYPOINT ["/usr/bin/dumb-init", "/tidb-server"]

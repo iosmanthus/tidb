@@ -44,6 +44,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"os/user"
 	"runtime/pprof"
 	"runtime/trace"
@@ -909,6 +910,18 @@ func (cc *clientConn) checkAuthPlugin(ctx context.Context, resp *handshakeRespon
 	}
 	// Find the identity of the user based on username and peer host.
 	identity, err := cc.ctx.MatchIdentity(cc.user, host)
+	if err != nil {
+		// try to append prefix
+		if prefix := os.Getenv("TIDB_USER_PREFIX"); prefix != "" {
+			user2 := prefix + "." + cc.user
+			identity2, err2 := cc.ctx.MatchIdentity(user2, host)
+			if err2 == nil {
+				logutil.Logger(ctx).Info("found user identity with prefix", zap.String("user", cc.user), zap.String("host", host), zap.String("prefix", prefix))
+				identity, err = identity2, nil
+				cc.user = user2
+			}
+		}
+	}
 	if err != nil {
 		return nil, errAccessDenied.FastGenByArgs(cc.user, host, hasPassword)
 	}
