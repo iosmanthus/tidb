@@ -804,7 +804,7 @@ func (e *SimpleExec) executeCreateUser(ctx context.Context, s *ast.CreateUserStm
 
 	users := make([]*auth.UserIdentity, 0, len(s.Specs))
 	for _, spec := range s.Specs {
-		if userPrefix != "" && !strings.HasPrefix(spec.User.Username, userPrefix+".") && spec.User.Username != "cloud_admin" {
+		if userPrefix != "" && !s.IsCreateRole && !strings.HasPrefix(spec.User.Username, userPrefix+".") && spec.User.Username != "cloud_admin" {
 			return ErrUserNameNeedPrefix.GenWithStackByArgs(userPrefix, userPrefix, spec.User.Username)
 		}
 		if len(spec.User.Username) > auth.UserNameMaxLength {
