@@ -80,3 +80,7 @@ func (*Store) GetMinSafeTS(_ string) uint64 {
 func (*Store) GetLockWaits() ([]*deadlockpb.WaitForEntry, error) {
 	return nil, nil
 }
+
+func (*Store) GetCodec() tikv.Codec {
+	return nil
+}

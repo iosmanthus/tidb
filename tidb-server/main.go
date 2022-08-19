@@ -203,7 +203,8 @@ func main() {
 	setupBinlogClient()
 	setupMetrics()
 
-	storage, dom := createStoreAndDomain()
+	keyspaceName := domain.GetKeyspaceNameBySettings()
+	storage, dom := createStoreAndDomain(keyspaceName)
 	svr := createServer(storage, dom)
 
 	// Register error API is not thread-safe, the caller MUST NOT register errors after initialization.
@@ -293,9 +294,9 @@ func registerMetrics() {
 	}
 }
 
-func createStoreAndDomain() (kv.Storage, *domain.Domain) {
+func createStoreAndDomain(keyspaceName string) (kv.Storage, *domain.Domain) {
 	cfg := config.GetGlobalConfig()
-	fullPath := fmt.Sprintf("%s://%s", cfg.Store, cfg.Path)
+	fullPath := fmt.Sprintf("%s://%s?keyspaceName=%s", cfg.Store, cfg.Path, keyspaceName)
 	var err error
 	storage, err := kvstore.New(fullPath)
 	terror.MustNil(err)

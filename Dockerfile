@@ -25,6 +25,11 @@ COPY go.sum .
 COPY parser/go.mod parser/go.mod
 COPY parser/go.sum parser/go.sum
 
+ARG GITHUB_TOKEN
+RUN if [ -n "$GITHUB_TOKEN"]; then git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"; fi
+
+ENV GOPRIVATE=github.com/tidbcloud
+
 RUN GO111MODULE=on go mod download
 
 # Build real binaries

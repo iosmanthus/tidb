@@ -17,6 +17,7 @@ package unistore
 import (
 	"context"
 	"errors"
+	"github.com/pingcap/kvproto/pkg/keyspacepb"
 	"math"
 	"sync"
 
@@ -33,6 +34,16 @@ type pdClient struct {
 	serviceSafePoints map[string]uint64
 	gcSafePointMu     sync.Mutex
 	globalConfig      map[string]string
+}
+
+func (c *pdClient) LoadKeyspace(ctx context.Context, name string) (*keyspacepb.KeyspaceMeta, error) {
+	//TODO implement me, introduce keyspace
+	panic("unimplemented")
+}
+
+func (c *pdClient) WatchKeyspaces(ctx context.Context) (chan []*keyspacepb.KeyspaceMeta, error) {
+	//TODO implement me, introduce keyspace
+	panic("unimplemented")
 }
 
 func newPDClient(pd *us.MockPD) *pdClient {

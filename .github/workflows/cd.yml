@@ -14,6 +14,7 @@ jobs:
       ECR_REPO: dbaas/dev-tier/tidb
       AWS_ROLE_ARN: ${{ secrets.DBAAS_DEV_AWS_ROLE }}
       AWS_REGION: us-west-2
+      GITHUB_TOKEN: ${{ secrets.GIT_ACTION_BOT }}
     steps:
       - name: Check out Code
         uses: actions/checkout@v2
