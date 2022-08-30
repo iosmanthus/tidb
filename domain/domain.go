@@ -56,6 +56,7 @@ import (
 	"github.com/pingcap/tidb/util"
 	"github.com/pingcap/tidb/util/dbterror"
 	"github.com/pingcap/tidb/util/domainutil"
+	"github.com/pingcap/tidb/util/etcd"
 	"github.com/pingcap/tidb/util/expensivequery"
 	"github.com/pingcap/tidb/util/logutil"
 	"github.com/pingcap/tidb/util/sqlexec"
@@ -793,6 +794,14 @@ func (do *Domain) Init(ddlLease time.Duration, sysExecutorFactory func(*Domain) 
 				},
 				TLS: ebd.TLSConfig(),
 			})
+
+			// If keyspace has been set in KvStorage
+			if isKvStorageKeyspaceSet(do.store) {
+				keyspaceId := KeyspaceIdBytesToUint32(do.store.GetCodec().GetKeyspaceID())
+				etcdPathPrefix := GetKeyspacePathPrefix(keyspaceId)
+				etcd.SetEtcdCliByNamespace(cli, etcdPathPrefix)
+			}
+
 			if err != nil {
 				return errors.Trace(err)
 			}

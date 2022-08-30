@@ -24,6 +24,7 @@ import (
 
 	"github.com/pingcap/errors"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/namespace"
 )
 
 // Node organizes the ectd query result as a Trie tree
@@ -91,6 +92,13 @@ func NewClientFromCfg(endpoints []string, dialTimeout time.Duration, root string
 		client:   cli,
 		rootPath: root,
 	}, nil
+}
+
+func SetEtcdCliByNamespace(cli *clientv3.Client, namespacePrefix string) {
+	cli.KV = namespace.NewKV(cli.KV, namespacePrefix)
+	cli.Watcher = namespace.NewWatcher(cli.Watcher, namespacePrefix)
+	cli.Lease = namespace.NewLease(cli.Lease, namespacePrefix)
+
 }
 
 // Close shutdowns the connection to etcd

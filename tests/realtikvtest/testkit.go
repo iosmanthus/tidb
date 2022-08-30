@@ -19,6 +19,10 @@ package realtikvtest
 import (
 	"context"
 	"flag"
+	"fmt"
+	"github.com/pingcap/tidb/tablecodec"
+	"go.uber.org/zap"
+	"os"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -40,12 +44,26 @@ import (
 )
 
 // WithRealTiKV is a flag identify whether tests run with real TiKV
-var WithRealTiKV = flag.Bool("with-real-tikv", false, "whether tests run with real TiKV")
+var (
+	WithRealTiKV = flag.Bool("with-real-tikv", false, "whether tests run with real TiKV")
+	// test tikv
+	tikvPath = flag.String("tikv-path", "tikv://127.0.0.1:2379?disableGC=true", "TiKV addr")
+
+	// KeyspaceName is an option to specify the name of keyspace that the tests run on,
+	// this option is only valid while the flag WithRealTiKV is set.
+	KeyspaceName = flag.String("keyspace-name", "", "the name of keyspace that the tests run on")
+)
 
 // RunTestMain run common setups for all real tikv tests.
 func RunTestMain(m *testing.M) {
 	testsetup.SetupForCommonTest()
 	flag.Parse()
+
+	if !*WithRealTiKV && *KeyspaceName != "" {
+		_, _ = fmt.Fprintf(os.Stderr, "could not set -keyspace-name while not running with real TiKVs.")
+		os.Exit(-1)
+	}
+
 	session.SetSchemaLease(5 * time.Second)
 	config.UpdateGlobal(func(conf *config.Config) {
 		conf.TiKVClient.AsyncCommit.SafeWindow = 0
@@ -74,14 +92,35 @@ func RunTestMain(m *testing.M) {
 }
 
 func clearTiKVStorage(t *testing.T, store kv.Storage) {
+	// clear table data.
+	tableStart := tablecodec.TablePrefix()
+	deleteRange(t, store, tableStart, endOfRange(tableStart))
+
+	// clear meta data.
+	metaStart := tablecodec.MetaPrefix()
+	deleteRange(t, store, metaStart, endOfRange(metaStart))
+}
+
+func endOfRange(start []byte) []byte {
+	return []byte{start[0] + 1}
+}
+
+func deleteRange(t *testing.T, store kv.Storage, start, end []byte) {
+
+	fmt.Println("deleteRange:", zap.Binary("start:", start), zap.Binary("end:", end))
 	txn, err := store.Begin()
 	require.NoError(t, err)
-	iter, err := txn.Iter(nil, nil)
+
+	// Clean all table data.
+	iter, err := txn.Iter(start, end)
+
+	//iter, err := txn.Iter(nil, nil)
 	require.NoError(t, err)
 	for iter.Valid() {
 		require.NoError(t, txn.Delete(iter.Key()))
 		require.NoError(t, iter.Next())
 	}
+
 	require.NoError(t, txn.Commit(context.Background()))
 }
 
@@ -127,12 +166,16 @@ func CreateMockStoreAndDomainAndSetup(t *testing.T, opts ...mockstore.MockTiKVSt
 	var dom *domain.Domain
 	var err error
 
+	println("WithRealTiKV:", *WithRealTiKV)
+	println("tikvPath:", *tikvPath)
+
 	if *WithRealTiKV {
 		var d driver.TiKVDriver
 		config.UpdateGlobal(func(conf *config.Config) {
 			conf.TxnLocalLatches.Enabled = false
+			conf.KeyspaceName = *KeyspaceName
 		})
-		store, err = d.Open("tikv://127.0.0.1:2379?disableGC=true")
+		store, err = d.Open(*tikvPath)
 		require.NoError(t, err)
 
 		clearTiKVStorage(t, store)

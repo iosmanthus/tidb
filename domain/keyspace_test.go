@@ -15,6 +15,7 @@
 package domain
 
 import (
+	"encoding/binary"
 	"os"
 	"testing"
 
@@ -76,5 +77,17 @@ func (k *keyspaceSuite) TestNoKeyspaceNameSet() {
 
 	k.Equal("", getKeyspaceName)
 	k.Equal(true, IsKeyspaceNameEmpty(getKeyspaceName))
+
+}
+
+func (k *keyspaceSuite) TestID2Uint32() {
+
+	expectId := uint32(1)
+	expectBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(expectBytes, expectId)
+
+	testBytes := expectBytes[1:]
+	testId := KeyspaceIdBytesToUint32(testBytes)
+	k.Equal(expectId, testId)
 
 }
