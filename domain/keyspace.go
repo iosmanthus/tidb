@@ -50,3 +50,8 @@ func KeyspaceIdBytesToUint32(b []byte) uint32 {
 func isKvStorageKeyspaceSet(store kv.Storage) bool {
 	return store.GetCodec().GetKeyspace() != nil
 }
+
+// GetKeyspaceID is used to get keyspace id bytes from keyspace prefix
+func GetKeyspaceID(b []byte) []byte {
+	return b[1:]
+}

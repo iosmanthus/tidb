@@ -86,7 +86,7 @@ func (k *keyspaceSuite) TestID2Uint32() {
 	expectBytes := make([]byte, 4)
 	binary.BigEndian.PutUint32(expectBytes, expectId)
 
-	testBytes := expectBytes[1:]
+	testBytes := GetKeyspaceID(expectBytes)
 	testId := KeyspaceIdBytesToUint32(testBytes)
 	k.Equal(expectId, testId)
 
