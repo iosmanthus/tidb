@@ -878,10 +878,10 @@ github.com/tdakkota/asciicheck v0.1.1 h1:PKzG7JUTUmVspQTDqtkX9eSiLGossXTybutHwTX
 github.com/tdakkota/asciicheck v0.1.1/go.mod h1:yHp0ai0Z9gUljN3o0xMhYJnH/IcvkdTBOX2fmJ93JEM=
 github.com/tiancaiamao/appdash v0.0.0-20181126055449-889f96f722a2 h1:mbAskLJ0oJfDRtkanvQPiooDH8HvJ2FBh+iKT/OmiQQ=
 github.com/tiancaiamao/appdash v0.0.0-20181126055449-889f96f722a2/go.mod h1:2PfKggNGDuadAa0LElHrByyrz4JPZ9fFx6Gs7nx7ZZU=
-github.com/tidbcloud/pd-cse/client v0.0.0-20220816074230-171c16e01847 h1:X7Y4Wys49aPBDI1RxROubDOVHRE3/lopl/grUK7Cd6U=
-github.com/tidbcloud/pd-cse/client v0.0.0-20220816074230-171c16e01847/go.mod h1:l76QLn0xvJx6k6maY+OmybxJDUnXf5Z4xDsypKRctao=
-github.com/tikv/client-go/v2 v2.0.1-0.20220816031836-dba8cc31ff9f h1:FE+/w1ufHodyeNJFg/4UYrIvoDGG4KN4SmJZ5RBbBcA=
-github.com/tikv/client-go/v2 v2.0.1-0.20220816031836-dba8cc31ff9f/go.mod h1:CSej9vvfDdGZVBkkME5XwQzL6LTONlVa81GUJnZf1gI=
+github.com/tidbcloud/pd-cse/client v0.0.0-20220905061235-4cfe0db56daa h1:Aa2U13dX3kLKivgSXVW2hr7s4c1r4HJKOhJrkYse98s=
+github.com/tidbcloud/pd-cse/client v0.0.0-20220905061235-4cfe0db56daa/go.mod h1:l76QLn0xvJx6k6maY+OmybxJDUnXf5Z4xDsypKRctao=
+github.com/tikv/client-go/v2 v2.0.1-0.20220901084837-0648746864bf h1:ULspCw+9k0NxhusBZICpmUjer+QJ6pS8Z6t5RAf6gQ4=
+github.com/tikv/client-go/v2 v2.0.1-0.20220901084837-0648746864bf/go.mod h1:+EWXvEAgmAz1yJuhimoSErANE+KhzWFUh51ZHV4UTC8=
 github.com/tklauser/go-sysconf v0.3.9/go.mod h1:11DU/5sG7UexIrp/O6g35hrWzu0JxlwQ3LSFUzyeuhs=
 github.com/tklauser/go-sysconf v0.3.10 h1:IJ1AZGZRWbY8T5Vfk04D9WOA5WSejdflXxP03OUqALw=
 github.com/tklauser/go-sysconf v0.3.10/go.mod h1:C8XykCvCb+Gn0oNCWPIlcb0RuglQTYaQ2hGm7jmxEFk=

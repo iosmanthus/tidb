@@ -244,7 +244,7 @@ replace github.com/dgrijalva/jwt-go => github.com/form3tech-oss/jwt-go v3.2.6-0.
 replace honnef.co/go/tools => honnef.co/go/tools v0.3.2
 
 // Use github.com/tidbcloud/pd-cse/client
-replace github.com/tikv/pd/client => github.com/tidbcloud/pd-cse/client v0.0.0-20220816074230-171c16e01847
+replace github.com/tikv/pd/client => github.com/tidbcloud/pd-cse/client v0.0.0-20220905061235-4cfe0db56daa
 
 // Use github.com/tikv/client-go/v2@api-v2
-replace github.com/tikv/client-go/v2 => github.com/tikv/client-go/v2 v2.0.1-0.20220816031836-dba8cc31ff9f
+replace github.com/tikv/client-go/v2 => github.com/tikv/client-go/v2 v2.0.1-0.20220901084837-0648746864bf

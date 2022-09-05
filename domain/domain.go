@@ -797,7 +797,7 @@ func (do *Domain) Init(ddlLease time.Duration, sysExecutorFactory func(*Domain) 
 
 			// If keyspace has been set in KvStorage
 			if isKvStorageKeyspaceSet(do.store) {
-				keyspaceId := KeyspaceIdBytesToUint32(do.store.GetCodec().GetKeyspaceID())
+				keyspaceId := KeyspaceIdBytesToUint32(do.store.GetCodec().GetKeyspace())
 				etcdPathPrefix := GetKeyspacePathPrefix(keyspaceId)
 				etcd.SetEtcdCliByNamespace(cli, etcdPathPrefix)
 			}
