@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/pingcap/errors"
+	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/tidb/kv"
 	"github.com/pingcap/tidb/util"
 	"github.com/pingcap/tidb/util/logutil"
@@ -73,7 +74,7 @@ func newStoreWithRetry(path string, maxRetries int) (kv.Storage, error) {
 	err = util.RunWithRetry(maxRetries, util.RetryInterval, func() (bool, error) {
 		logutil.BgLogger().Info("new store", zap.String("path", path))
 		s, err = d.Open(path)
-		return kv.IsTxnRetryableError(err), err
+		return kv.IsTxnRetryableError(err) || IsNotBootstrappedError(err), err
 	})
 
 	if err == nil {
@@ -89,4 +90,12 @@ func loadDriver(name string) (kv.Driver, bool) {
 	defer storesLock.RUnlock()
 	d, ok := stores[name]
 	return d, ok
+}
+
+// IsNotBootstrappedError returns true if the error is pd not bootstrapped error.
+func IsNotBootstrappedError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), pdpb.ErrorType_NOT_BOOTSTRAPPED.String())
 }

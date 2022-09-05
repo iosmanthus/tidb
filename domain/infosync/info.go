@@ -32,6 +32,7 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/failpoint"
+	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb/config"
 	"github.com/pingcap/tidb/ddl/label"
 	"github.com/pingcap/tidb/ddl/placement"
@@ -44,6 +45,7 @@ import (
 	"github.com/pingcap/tidb/parser/terror"
 	"github.com/pingcap/tidb/sessionctx/binloginfo"
 	"github.com/pingcap/tidb/sessionctx/variable"
+	store2 "github.com/pingcap/tidb/store"
 	"github.com/pingcap/tidb/store/helper"
 	"github.com/pingcap/tidb/types"
 	util2 "github.com/pingcap/tidb/util"
@@ -446,7 +448,14 @@ func removeVAndHash(v string) string {
 func CheckTiKVVersion(store kv.Storage, minVersion semver.Version) error {
 	if store, ok := store.(kv.StorageWithPD); ok {
 		pdClient := store.GetPDClient()
-		stores, err := pdClient.GetAllStores(context.Background(), pd.WithExcludeTombstone())
+
+		var stores []*metapb.Store
+		var err error
+		err = util2.RunWithRetry(util2.DefaultMaxRetries, util2.RetryInterval, func() (bool, error) {
+			stores, err = pdClient.GetAllStores(context.Background(), pd.WithExcludeTombstone())
+			return store2.IsNotBootstrappedError(err), err
+		})
+
 		if err != nil {
 			return err
 		}
