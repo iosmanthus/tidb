@@ -50,6 +50,7 @@ import (
 	"github.com/pingcap/tidb/session/txninfo"
 	"github.com/pingcap/tidb/sessionctx/binloginfo"
 	"github.com/pingcap/tidb/sessionctx/variable"
+	"github.com/pingcap/tidb/standby"
 	"github.com/pingcap/tidb/statistics"
 	kvstore "github.com/pingcap/tidb/store"
 	"github.com/pingcap/tidb/store/driver"
@@ -117,6 +118,8 @@ const (
 
 	nmInitializeSecure   = "initialize-secure"
 	nmInitializeInsecure = "initialize-insecure"
+
+	nmStandby = "standby"
 )
 
 var (
@@ -162,6 +165,8 @@ var (
 	// Security
 	initializeSecure   = flagBoolean(nmInitializeSecure, false, "bootstrap tidb-server in secure mode")
 	initializeInsecure = flagBoolean(nmInitializeInsecure, true, "bootstrap tidb-server in insecure mode")
+
+	standbyMode = flagBoolean(nmStandby, false, "start tidb-server as standby")
 )
 
 func main() {
@@ -171,12 +176,21 @@ func main() {
 		flag.Usage()
 		os.Exit(0)
 	}
+
 	config.InitializeConfig(*configPath, *configCheck, *configStrict, overrideConfig)
 	if *version {
 		setVersions()
 		fmt.Println(printer.GetTiDBInfo())
 		os.Exit(0)
 	}
+
+	if config.GetGlobalConfig().StandByMode {
+		keyspace := standby.StartStandby(config.GetGlobalConfig().Status.StatusHost, config.GetGlobalConfig().Status.StatusPort)
+		config.UpdateGlobal(func(c *config.Config) {
+			c.KeyspaceName = keyspace
+		})
+	}
+
 	registerStores()
 	registerMetrics()
 	if config.GetGlobalConfig().OOMUseTmpStorage {
@@ -535,6 +549,10 @@ func overrideConfig(cfg *config.Config) {
 	if runtime.GOOS == "windows" && cfg.Security.SecureBootstrap {
 		err = fmt.Errorf("the option --initialize-secure is not supported on Windows")
 		terror.MustNil(err)
+	}
+
+	if actualFlags[nmStandby] {
+		cfg.StandByMode = *standbyMode
 	}
 }
 

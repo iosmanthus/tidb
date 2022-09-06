@@ -171,6 +171,7 @@ type Config struct {
 	TokenLimit       uint   `toml:"token-limit" json:"token-limit"`
 	OOMUseTmpStorage bool   `toml:"oom-use-tmp-storage" json:"oom-use-tmp-storage"`
 	TempStoragePath  string `toml:"tmp-storage-path" json:"tmp-storage-path"`
+	StandByMode      bool   `toml:"standby" json:"standby"`
 	// TempStorageQuota describe the temporary storage Quota during query exector when OOMUseTmpStorage is enabled
 	// If the quota exceed the capacity of the TempStoragePath, the tidb-server would exit with fatal error
 	TempStorageQuota           int64                   `toml:"tmp-storage-quota" json:"tmp-storage-quota"` // Bytes
