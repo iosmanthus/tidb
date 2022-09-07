@@ -47,7 +47,8 @@ func KeyspaceIdBytesToUint32(b []byte) uint32 {
 	return binary.BigEndian.Uint32(c)
 }
 
-func isKvStorageKeyspaceSet(store kv.Storage) bool {
+// IsKvStorageKeyspaceSet return true if get keyspace meta successed
+func IsKvStorageKeyspaceSet(store kv.Storage) bool {
 	return store.GetCodec().GetKeyspace() != nil
 }
 

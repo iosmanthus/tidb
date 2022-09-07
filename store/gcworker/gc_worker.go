@@ -31,13 +31,16 @@ import (
 	"github.com/pingcap/errors"
 	"github.com/pingcap/failpoint"
 	"github.com/pingcap/kvproto/pkg/errorpb"
+	"github.com/pingcap/kvproto/pkg/keyspacepb"
 	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb/br/pkg/utils"
+	"github.com/pingcap/tidb/config"
 	"github.com/pingcap/tidb/ddl"
 	"github.com/pingcap/tidb/ddl/label"
 	"github.com/pingcap/tidb/ddl/placement"
 	"github.com/pingcap/tidb/ddl/util"
+	"github.com/pingcap/tidb/domain"
 	"github.com/pingcap/tidb/domain/infosync"
 	"github.com/pingcap/tidb/kv"
 	"github.com/pingcap/tidb/metrics"
@@ -46,6 +49,7 @@ import (
 	"github.com/pingcap/tidb/privilege"
 	"github.com/pingcap/tidb/session"
 	"github.com/pingcap/tidb/sessionctx/variable"
+	kvstore "github.com/pingcap/tidb/store"
 	"github.com/pingcap/tidb/tablecodec"
 	"github.com/pingcap/tidb/util/codec"
 	"github.com/pingcap/tidb/util/dbterror"
@@ -306,6 +310,13 @@ func (w *GCWorker) leaderTick(ctx context.Context) error {
 	if w.gcIsRunning {
 		logutil.Logger(ctx).Info("[gc worker] there's already a gc job running, skipped",
 			zap.String("leaderTick on", w.uuid))
+		return nil
+	}
+
+	// If there's setting keyspace-name, then skipped GC worker logic.
+	// It need a group of special tidb nodes to execute GC worker logic.
+	if domain.IsKvStorageKeyspaceSet(w.store) {
+		logutil.Logger(ctx).Info("[gc worker] there's set keyspace, skipped. ")
 		return nil
 	}
 
@@ -663,22 +674,7 @@ func (w *GCWorker) runGCJob(ctx context.Context, safePoint uint64, concurrency i
 	// Sleep to wait for all other tidb instances update their safepoint cache.
 	time.Sleep(gcSafePointCacheInterval)
 
-	err = w.deleteRanges(ctx, safePoint, concurrency)
-	if err != nil {
-		logutil.Logger(ctx).Error("[gc worker] delete range returns an error",
-			zap.String("uuid", w.uuid),
-			zap.Error(err))
-		metrics.GCJobFailureCounter.WithLabelValues("delete_range").Inc()
-		return errors.Trace(err)
-	}
-	err = w.redoDeleteRanges(ctx, safePoint, concurrency)
-	if err != nil {
-		logutil.Logger(ctx).Error("[gc worker] redo-delete range returns an error",
-			zap.String("uuid", w.uuid),
-			zap.Error(err))
-		metrics.GCJobFailureCounter.WithLabelValues("redo_delete_range").Inc()
-		return errors.Trace(err)
-	}
+	w.runAllKeyspaceDeleteRanges(ctx, safePoint, concurrency)
 
 	if w.checkUseDistributedGC() {
 		err = w.uploadSafePointToPD(ctx, safePoint)
@@ -703,12 +699,100 @@ func (w *GCWorker) runGCJob(ctx context.Context, safePoint uint64, concurrency i
 	return nil
 }
 
+func (w *GCWorker) getAllKeyspace(ctx context.Context) []*keyspacepb.KeyspaceMeta {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	watchChan, err := w.pdClient.WatchKeyspaces(ctx)
+	if err != nil {
+		logutil.Logger(ctx).Error("WatchKeyspaces error")
+	}
+	initialLoaded := <-watchChan
+	return initialLoaded
+}
+
+func (w *GCWorker) isExistsTable(tablename string, store kv.Storage) bool {
+	ctx := kv.WithInternalSourceType(context.Background(), kv.InternalTxnGC)
+	se := createSession(store)
+	defer se.Close()
+	rs, err := se.ExecuteInternal(ctx, `SHOW TABLES %? `, tablename)
+	if rs != nil {
+		defer terror.Call(rs.Close)
+	}
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
+func (w *GCWorker) runAllKeyspaceDeleteRanges(ctx context.Context, safePoint uint64, concurrency int) error {
+
+	// =========== GC api v1 data ===========
+	err1 := w.runDeleteRanges(ctx, safePoint, concurrency, w.store)
+	if err1 != nil {
+		return errors.Trace(err1)
+	}
+	// =========== GC api v1 data END ===========
+
+	// Prepare get keyspace list
+	cfg := config.GetGlobalConfig()
+
+	// Get all keyspace meta from PD
+	keyspaces := w.getAllKeyspace(ctx)
+
+	for i := range keyspaces {
+		keyspace := keyspaces[i]
+		keyspaceName := keyspace.Name
+
+		fullStoragePath := fmt.Sprintf("%s://%s?keyspaceName=%s", cfg.Store, cfg.Path, keyspaceName)
+		storage, err := kvstore.New(fullStoragePath)
+		if err != nil {
+			return errors.Trace(err)
+		}
+
+		// May be a keyspace is in pd metadata,but the system table is not exists
+		// check deleteRangesTable
+		isExists := w.isExistsTable(util.DeleteRangesTable, storage)
+		if !isExists {
+			logutil.Logger(ctx).Info("The keyspace system table is not ready,skip deleteRange.", zap.String("keyspaceName", keyspaceName))
+			continue
+		}
+
+		err = w.runDeleteRanges(ctx, safePoint, concurrency, storage)
+		if err != nil {
+			return errors.Trace(err)
+		}
+	}
+	return nil
+}
+
+func (w *GCWorker) runDeleteRanges(ctx context.Context, safePoint uint64, concurrency int, store kv.Storage) error {
+	err := w.deleteRanges(ctx, safePoint, concurrency, store)
+	if err != nil {
+		logutil.Logger(ctx).Error("[gc worker] delete range returns an error",
+			zap.String("uuid", w.uuid),
+			zap.Error(err))
+		metrics.GCJobFailureCounter.WithLabelValues("delete_range").Inc()
+		return errors.Trace(err)
+	}
+	err = w.redoDeleteRanges(ctx, safePoint, concurrency, store)
+	if err != nil {
+		logutil.Logger(ctx).Error("[gc worker] redo-delete range returns an error",
+			zap.String("uuid", w.uuid),
+			zap.Error(err))
+		metrics.GCJobFailureCounter.WithLabelValues("redo_delete_range").Inc()
+		return errors.Trace(err)
+	}
+	return nil
+}
+
 // deleteRanges processes all delete range records whose ts < safePoint in table `gc_delete_range`
 // `concurrency` specifies the concurrency to send NotifyDeleteRange.
-func (w *GCWorker) deleteRanges(ctx context.Context, safePoint uint64, concurrency int) error {
+func (w *GCWorker) deleteRanges(ctx context.Context, safePoint uint64, concurrency int, store kv.Storage) error {
 	metrics.GCWorkerCounter.WithLabelValues("delete_range").Inc()
 
-	se := createSession(w.store)
+	se := createSession(store)
 	defer se.Close()
 	ranges, err := util.LoadDeleteRanges(ctx, se, safePoint)
 	if err != nil {
@@ -725,7 +809,7 @@ func (w *GCWorker) deleteRanges(ctx context.Context, safePoint uint64, concurren
 	for _, r := range ranges {
 		startKey, endKey := r.Range()
 
-		err = w.doUnsafeDestroyRangeRequest(ctx, startKey, endKey, concurrency)
+		err = w.doUnsafeDestroyRangeRequest(ctx, startKey, endKey, concurrency, store.(tikv.Storage))
 		failpoint.Inject("ignoreDeleteRangeFailed", func() {
 			err = nil
 		})
@@ -775,13 +859,13 @@ func (w *GCWorker) deleteRanges(ctx context.Context, safePoint uint64, concurren
 
 // redoDeleteRanges checks all deleted ranges whose ts is at least `lifetime + 24h` ago. See TiKV RFC #2.
 // `concurrency` specifies the concurrency to send NotifyDeleteRange.
-func (w *GCWorker) redoDeleteRanges(ctx context.Context, safePoint uint64, concurrency int) error {
+func (w *GCWorker) redoDeleteRanges(ctx context.Context, safePoint uint64, concurrency int, store kv.Storage) error {
 	metrics.GCWorkerCounter.WithLabelValues("redo_delete_range").Inc()
 
 	// We check delete range records that are deleted about 24 hours ago.
 	redoDeleteRangesTs := safePoint - oracle.ComposeTS(int64(gcRedoDeleteRangeDelay.Seconds())*1000, 0)
 
-	se := createSession(w.store)
+	se := createSession(store)
 	ranges, err := util.LoadDoneDeleteRanges(ctx, se, redoDeleteRangesTs)
 	se.Close()
 	if err != nil {
@@ -795,7 +879,7 @@ func (w *GCWorker) redoDeleteRanges(ctx context.Context, safePoint uint64, concu
 	for _, r := range ranges {
 		startKey, endKey := r.Range()
 
-		err = w.doUnsafeDestroyRangeRequest(ctx, startKey, endKey, concurrency)
+		err = w.doUnsafeDestroyRangeRequest(ctx, startKey, endKey, concurrency, store.(tikv.Storage))
 		if err != nil {
 			logutil.Logger(ctx).Error("[gc worker] redo-delete range failed on range",
 				zap.String("uuid", w.uuid),
@@ -805,7 +889,7 @@ func (w *GCWorker) redoDeleteRanges(ctx context.Context, safePoint uint64, concu
 			continue
 		}
 
-		se := createSession(w.store)
+		se := createSession(store)
 		err := util.DeleteDoneRecord(se, r)
 		se.Close()
 		if err != nil {
@@ -825,7 +909,7 @@ func (w *GCWorker) redoDeleteRanges(ctx context.Context, safePoint uint64, concu
 	return nil
 }
 
-func (w *GCWorker) doUnsafeDestroyRangeRequest(ctx context.Context, startKey []byte, endKey []byte, concurrency int) error {
+func (w *GCWorker) doUnsafeDestroyRangeRequest(ctx context.Context, startKey []byte, endKey []byte, concurrency int, tikvStore tikv.Storage) error {
 	// Get all stores every time deleting a region. So the store list is less probably to be stale.
 	stores, err := w.getStoresForGC(ctx)
 	if err != nil {
@@ -851,7 +935,7 @@ func (w *GCWorker) doUnsafeDestroyRangeRequest(ctx context.Context, startKey []b
 		go func() {
 			defer wg.Done()
 
-			resp, err1 := w.tikvStore.GetTiKVClient().SendRequest(ctx, address, req, unsafeDestroyRangeTimeout)
+			resp, err1 := tikvStore.GetTiKVClient().SendRequest(ctx, address, req, unsafeDestroyRangeTimeout)
 			if err1 == nil {
 				if resp == nil || resp.Resp == nil {
 					err1 = errors.Errorf("unsafe destroy range returns nil response from store %v", storeID)
@@ -2228,7 +2312,7 @@ func NewMockGCWorker(store kv.Storage) (*MockGCWorker, error) {
 func (w *MockGCWorker) DeleteRanges(ctx context.Context, safePoint uint64) error {
 	logutil.Logger(ctx).Error("deleteRanges is called")
 	ctx = kv.WithInternalSourceType(ctx, kv.InternalTxnGC)
-	return w.worker.deleteRanges(ctx, safePoint, 1)
+	return w.worker.deleteRanges(ctx, safePoint, 1, w.worker.store)
 }
 
 const scanLockResultBufferSize = 128
