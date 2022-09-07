@@ -119,7 +119,8 @@ const (
 	nmInitializeSecure   = "initialize-secure"
 	nmInitializeInsecure = "initialize-insecure"
 
-	nmStandby = "standby"
+	nmStandby        = "standby"
+	nmMaxIdleSeconds = "max-idle-seconds"
 )
 
 var (
@@ -166,7 +167,8 @@ var (
 	initializeSecure   = flagBoolean(nmInitializeSecure, false, "bootstrap tidb-server in secure mode")
 	initializeInsecure = flagBoolean(nmInitializeInsecure, true, "bootstrap tidb-server in insecure mode")
 
-	standbyMode = flagBoolean(nmStandby, false, "start tidb-server as standby")
+	standbyMode    = flagBoolean(nmStandby, false, "start tidb-server as standby")
+	maxIdleSeconds = flag.Uint(nmMaxIdleSeconds, 0, "max idle seconds for a connection, 0 means no limit")
 )
 
 func main() {
@@ -189,6 +191,10 @@ func main() {
 		config.UpdateGlobal(func(c *config.Config) {
 			c.KeyspaceName = keyspace
 		})
+		maxIdleSeconds := int(config.GetGlobalConfig().MaxIdleSeconds)
+		if maxIdleSeconds > 0 {
+			standby.StartWatchLastActive(maxIdleSeconds)
+		}
 	}
 
 	registerStores()
@@ -553,6 +559,10 @@ func overrideConfig(cfg *config.Config) {
 
 	if actualFlags[nmStandby] {
 		cfg.StandByMode = *standbyMode
+	}
+
+	if actualFlags[nmMaxIdleSeconds] {
+		cfg.MaxIdleSeconds = *maxIdleSeconds
 	}
 }
 
