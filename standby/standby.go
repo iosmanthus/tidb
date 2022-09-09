@@ -23,6 +23,9 @@ var (
 	mu           sync.RWMutex
 	state        = standbyState
 	keyspaceName string
+
+	// activationTimeout specifies the maximum allowed time for tidb to activate from standby mode.
+	activationTimeout uint
 )
 
 var (
@@ -67,8 +70,13 @@ func StandbyHandler() *http.ServeMux {
 
 		activateCh <- struct{}{}
 
+		// If no limit posted on activation time, wait for serverIsReady indefinitely.
+		if activationTimeout == 0 {
+			<-serverIsReadyCh
+			return
+		}
 		select {
-		case <-time.After(10 * time.Second):
+		case <-time.After(time.Duration(activationTimeout) * time.Second):
 			logutil.BgLogger().Warn("timeout waiting for activation")
 			w.WriteHeader(http.StatusRequestTimeout)
 			w.Write([]byte("timeout waiting for activation"))
@@ -87,12 +95,12 @@ func StandbyHandler() *http.ServeMux {
 var server *http.Server
 
 // StartStandby starts a http server to listen and wait for activation signal.
-func StartStandby(host string, port uint) string {
+func StartStandby(host string, port uint, timeout uint) string {
 	server = &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", host, port),
 		Handler: StandbyHandler(),
 	}
-
+	activationTimeout = timeout
 	logutil.BgLogger().Info("tidb-server is now running as standby, waiting for activation...", zap.String("addr", server.Addr))
 	go func() {
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

@@ -173,6 +173,8 @@ type Config struct {
 	TempStoragePath  string `toml:"tmp-storage-path" json:"tmp-storage-path"`
 	StandByMode      bool   `toml:"standby" json:"standby"`
 	MaxIdleSeconds   uint   `toml:"max-idle-seconds" json:"max-idle-seconds"`
+	// ActivationTimeout specifies the maximum allowed time for tidb to activate from standby mode.
+	ActivationTimeout uint `toml:"activation-timeout" json:"activation-timeout"`
 	// TempStorageQuota describe the temporary storage Quota during query exector when OOMUseTmpStorage is enabled
 	// If the quota exceed the capacity of the TempStoragePath, the tidb-server would exit with fatal error
 	TempStorageQuota           int64                   `toml:"tmp-storage-quota" json:"tmp-storage-quota"` // Bytes

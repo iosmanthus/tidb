@@ -119,8 +119,9 @@ const (
 	nmInitializeSecure   = "initialize-secure"
 	nmInitializeInsecure = "initialize-insecure"
 
-	nmStandby        = "standby"
-	nmMaxIdleSeconds = "max-idle-seconds"
+	nmStandby           = "standby"
+	nmActivationTimeout = "activation-timeout"
+	nmMaxIdleSeconds    = "max-idle-seconds"
 )
 
 var (
@@ -167,8 +168,10 @@ var (
 	initializeSecure   = flagBoolean(nmInitializeSecure, false, "bootstrap tidb-server in secure mode")
 	initializeInsecure = flagBoolean(nmInitializeInsecure, true, "bootstrap tidb-server in insecure mode")
 
-	standbyMode    = flagBoolean(nmStandby, false, "start tidb-server as standby")
-	maxIdleSeconds = flag.Uint(nmMaxIdleSeconds, 0, "max idle seconds for a connection, 0 means no limit")
+	// Standby
+	standbyMode       = flagBoolean(nmStandby, false, "start tidb-server as standby")
+	activationTimeout = flag.Uint(nmActivationTimeout, 10, "max time in second allowed for tidb to activate from standby, 0 means no limit")
+	maxIdleSeconds    = flag.Uint(nmMaxIdleSeconds, 0, "max idle seconds for a connection, 0 means no limit")
 )
 
 func main() {
@@ -187,7 +190,10 @@ func main() {
 	}
 
 	if config.GetGlobalConfig().StandByMode {
-		keyspace := standby.StartStandby(config.GetGlobalConfig().Status.StatusHost, config.GetGlobalConfig().Status.StatusPort)
+		keyspace := standby.StartStandby(
+			config.GetGlobalConfig().Status.StatusHost,
+			config.GetGlobalConfig().Status.StatusPort,
+			config.GetGlobalConfig().ActivationTimeout)
 		config.UpdateGlobal(func(c *config.Config) {
 			c.KeyspaceName = keyspace
 		})
@@ -559,6 +565,10 @@ func overrideConfig(cfg *config.Config) {
 
 	if actualFlags[nmStandby] {
 		cfg.StandByMode = *standbyMode
+	}
+
+	if actualFlags[nmActivationTimeout] {
+		cfg.ActivationTimeout = *activationTimeout
 	}
 
 	if actualFlags[nmMaxIdleSeconds] {
