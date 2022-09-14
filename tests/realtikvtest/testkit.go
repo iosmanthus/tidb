@@ -109,6 +109,8 @@ func deleteRange(t *testing.T, store kv.Storage, start, end []byte) {
 
 	fmt.Println("deleteRange:", zap.Binary("start:", start), zap.Binary("end:", end))
 	txn, err := store.Begin()
+	txn.SetOption(kv.Pessimistic, true)
+
 	require.NoError(t, err)
 
 	// Clean all table data.
