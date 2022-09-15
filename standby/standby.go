@@ -29,7 +29,7 @@ var (
 )
 
 var (
-	activateCh      = make(chan struct{})
+	activateCh      = make(chan struct{}, 1)
 	serverIsReadyCh = make(chan struct{})
 )
 
@@ -52,21 +52,23 @@ func StandbyHandler() *http.ServeMux {
 		}
 
 		mu.Lock()
-		if state != standbyState {
+		if state == standbyState {
+			state = activatedState
+			keyspaceName = req.KeyspaceName
+			activateCh <- struct{}{}
+		} else if keyspaceName != req.KeyspaceName {
 			mu.Unlock()
 			w.WriteHeader(http.StatusPreconditionFailed)
 			w.Write([]byte("server is not in standby mode"))
 			return
 		}
-		state = activatedState
-		keyspaceName = req.KeyspaceName
+		// if client tries to activate with same keyspace name, wait for ready signal and return 200.
 		mu.Unlock()
-
-		activateCh <- struct{}{}
 
 		// If no limit posted on activation time, wait for serverIsReady indefinitely.
 		if activationTimeout == 0 {
 			<-serverIsReadyCh
+			statusHandler(w, r)
 			return
 		}
 		select {
