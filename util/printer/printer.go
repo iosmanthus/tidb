@@ -32,7 +32,7 @@ import (
 // PrintTiDBInfo prints the TiDB version information.
 func PrintTiDBInfo() {
 	logutil.BgLogger().Info("Welcome to TiDB.",
-		zap.String("Release Version", mysql.TiDBReleaseVersion),
+		zap.String("Release Version", mysql.TiDBReleaseVersionFixed),
 		zap.String("Edition", versioninfo.TiDBEdition),
 		zap.String("Git Commit Hash", versioninfo.TiDBGitHash),
 		zap.String("Git Branch", versioninfo.TiDBGitBranch),

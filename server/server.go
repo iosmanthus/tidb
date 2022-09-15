@@ -602,7 +602,7 @@ func (cc *clientConn) connectInfo() *variable.ConnectionInfo {
 		User:              cc.user,
 		ServerOSLoginUser: osUser,
 		OSVersion:         osVersion,
-		ServerVersion:     mysql.TiDBReleaseVersion,
+		ServerVersion:     mysql.TiDBReleaseVersionFixed,
 		SSLVersion:        "v1.2.0", // for current go version
 		PID:               serverPID,
 		DB:                cc.dbname,

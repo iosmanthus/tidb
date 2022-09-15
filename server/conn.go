@@ -174,16 +174,16 @@ func newClientConn(s *Server) *clientConn {
 // clientConn represents a connection between server and client, it maintains connection specific state,
 // handles client query.
 type clientConn struct {
-	pkt          *packetIO         // a helper to read and write data in packet format.
-	bufReadConn  *bufferedReadConn // a buffered-read net.Conn or buffered-read tls.Conn.
-	tlsConn      *tls.Conn         // TLS connection, nil if not TLS.
-	server       *Server           // a reference of server instance.
-	capability   uint32            // client capability affects the way server handles client request.
-	connectionID uint64            // atomically allocated by a global variable, unique in process scope.
-	user         string            // user of the client.
-	dbname       string            // default database name.
-	salt         []byte            // random bytes used for authentication.
-	alloc        arena.Allocator   // an memory allocator for reducing memory allocation.
+	pkt          *packetIO            // a helper to read and write data in packet format.
+	bufReadConn  *bufferedReadConn    // a buffered-read net.Conn or buffered-read tls.Conn.
+	tlsConn      *tls.ConnectionState // TLS connection state, nil if not TLS.
+	server       *Server              // a reference of server instance.
+	capability   uint32               // client capability affects the way server handles client request.
+	connectionID uint64               // atomically allocated by a global variable, unique in process scope.
+	user         string               // user of the client.
+	dbname       string               // default database name.
+	salt         []byte               // random bytes used for authentication.
+	alloc        arena.Allocator      // an memory allocator for reducing memory allocation.
 	chunkAlloc   chunk.Allocator
 	lastPacket   []byte // latest sql query string, currently used for logging error.
 	// ShowProcess() and mysql.ComChangeUser both visit this field, ShowProcess() read information through
@@ -696,12 +696,6 @@ func (cc *clientConn) readOptionalSSLRequestAndHandshakeResponse(ctx context.Con
 				return err
 			}
 		}
-	} else if tlsutil.RequireSecureTransport.Load() && !cc.isUnixSocket {
-		// If it's not a socket connection, we should reject the connection
-		// because TLS is required.
-		err := errSecureTransportRequired.FastGenByArgs()
-		terror.Log(err)
-		return err
 	}
 
 	// Read the remaining part of the packet.
@@ -713,6 +707,26 @@ func (cc *clientConn) readOptionalSSLRequestAndHandshakeResponse(ctx context.Con
 	if err != nil {
 		terror.Log(err)
 		return err
+	}
+
+	if resp.Capability&mysql.ClientSSL == 0 {
+		var gatewaySecureConn bool
+		if attrKey := os.Getenv("GATEWAY_SECURECONN_ATTR_KEY"); attrKey != "" {
+			if attrValue := resp.Attrs[attrKey]; attrValue != "" {
+				cc.tlsConn = &tls.ConnectionState{}
+				fmt.Sscanf(attrValue, `{"Version":%d,"CipherSuite":%d}`, &cc.tlsConn.Version, &cc.tlsConn.CipherSuite)
+				gatewaySecureConn = true
+			}
+		}
+
+		if tlsutil.RequireSecureTransport.Load() &&
+			!cc.isUnixSocket && !gatewaySecureConn {
+			// If it's not a socket connection, we should reject the connection
+			// because TLS is required.
+			err := errSecureTransportRequired.FastGenByArgs()
+			terror.Log(err)
+			return err
+		}
 	}
 
 	cc.capability = resp.Capability & cc.server.capability
@@ -823,12 +837,7 @@ func (cc *clientConn) SessionStatusToString() string {
 }
 
 func (cc *clientConn) openSession() error {
-	var tlsStatePtr *tls.ConnectionState
-	if cc.tlsConn != nil {
-		tlsState := cc.tlsConn.ConnectionState()
-		tlsStatePtr = &tlsState
-	}
-	ctx, err := cc.server.driver.OpenCtx(cc.connectionID, cc.capability, cc.collation, cc.dbname, tlsStatePtr)
+	ctx, err := cc.server.driver.OpenCtx(cc.connectionID, cc.capability, cc.collation, cc.dbname, cc.tlsConn)
 	if err != nil {
 		return err
 	}
@@ -1482,18 +1491,7 @@ func (cc *clientConn) useDB(ctx context.Context, db string) (err error) {
 }
 
 func (cc *clientConn) flush(ctx context.Context) error {
-	var (
-		stmtDetail *execdetails.StmtExecDetails
-		startTime  time.Time
-	)
-	if stmtDetailRaw := ctx.Value(execdetails.StmtExecDetailKey); stmtDetailRaw != nil {
-		stmtDetail = stmtDetailRaw.(*execdetails.StmtExecDetails)
-		startTime = time.Now()
-	}
 	defer func() {
-		if stmtDetail != nil {
-			stmtDetail.WriteSQLRespDuration += time.Since(startTime)
-		}
 		trace.StartRegion(ctx, "FlushClientConn").End()
 		if ctx := cc.getCtx(); ctx != nil && ctx.WarningCount() > 0 {
 			for _, err := range ctx.GetWarnings() {
@@ -2236,7 +2234,6 @@ func (cc *clientConn) writeChunks(ctx context.Context, rs ResultSet, binary bool
 	req := rs.NewChunk(cc.chunkAlloc)
 	gotColumnInfo := false
 	firstNext := true
-	var start time.Time
 	var stmtDetail *execdetails.StmtExecDetails
 	stmtDetailRaw := ctx.Value(execdetails.StmtExecDetailKey)
 	if stmtDetailRaw != nil {
@@ -2263,14 +2260,8 @@ func (cc *clientConn) writeChunks(ctx context.Context, rs ResultSet, binary bool
 			// We need to call Next before we get columns.
 			// Otherwise, we will get incorrect columns info.
 			columns := rs.Columns()
-			if stmtDetail != nil {
-				start = time.Now()
-			}
 			if err = cc.writeColumnInfo(columns, serverStatus); err != nil {
 				return false, err
-			}
-			if stmtDetail != nil {
-				stmtDetail.WriteSQLRespDuration += time.Since(start)
 			}
 			gotColumnInfo = true
 		}
@@ -2279,9 +2270,7 @@ func (cc *clientConn) writeChunks(ctx context.Context, rs ResultSet, binary bool
 			break
 		}
 		reg := trace.StartRegion(ctx, "WriteClientConn")
-		if stmtDetail != nil {
-			start = time.Now()
-		}
+		start := time.Now()
 		for i := 0; i < rowCount; i++ {
 			data = data[0:4]
 			if binary {
@@ -2303,14 +2292,7 @@ func (cc *clientConn) writeChunks(ctx context.Context, rs ResultSet, binary bool
 			stmtDetail.WriteSQLRespDuration += time.Since(start)
 		}
 	}
-	if stmtDetail != nil {
-		start = time.Now()
-	}
-	err := cc.writeEOF(serverStatus)
-	if stmtDetail != nil {
-		stmtDetail.WriteSQLRespDuration += time.Since(start)
-	}
-	return false, err
+	return false, cc.writeEOF(serverStatus)
 }
 
 // writeChunksWithFetchSize writes data from a Chunk, which filled data by a ResultSet, into a connection.
@@ -2367,13 +2349,8 @@ func (cc *clientConn) writeChunksWithFetchSize(ctx context.Context, rs ResultSet
 	if stmtDetailRaw != nil {
 		stmtDetail = stmtDetailRaw.(*execdetails.StmtExecDetails)
 	}
-	var (
-		err   error
-		start time.Time
-	)
-	if stmtDetail != nil {
-		start = time.Now()
-	}
+	start := time.Now()
+	var err error
 	for _, row := range curRows {
 		data = data[0:4]
 		data, err = dumpBinaryRow(data, rs.Columns(), row, cc.rsEncoder)
@@ -2390,14 +2367,7 @@ func (cc *clientConn) writeChunksWithFetchSize(ctx context.Context, rs ResultSet
 	if cl, ok := rs.(fetchNotifier); ok {
 		cl.OnFetchReturned()
 	}
-	if stmtDetail != nil {
-		start = time.Now()
-	}
-	err = cc.writeEOF(serverStatus)
-	if stmtDetail != nil {
-		stmtDetail.WriteSQLRespDuration += time.Since(start)
-	}
-	return err
+	return cc.writeEOF(serverStatus)
 }
 
 func (cc *clientConn) setConn(conn net.Conn) {
@@ -2417,7 +2387,8 @@ func (cc *clientConn) upgradeToTLS(tlsConfig *tls.Config) error {
 		return err
 	}
 	cc.setConn(tlsConn)
-	cc.tlsConn = tlsConn
+	state := tlsConn.ConnectionState()
+	cc.tlsConn = &state
 	return nil
 }
 
@@ -2458,12 +2429,7 @@ func (cc *clientConn) handleResetConnection(ctx context.Context) error {
 	if err != nil {
 		logutil.Logger(ctx).Debug("close old context failed", zap.Error(err))
 	}
-	var tlsStatePtr *tls.ConnectionState
-	if cc.tlsConn != nil {
-		tlsState := cc.tlsConn.ConnectionState()
-		tlsStatePtr = &tlsState
-	}
-	tidbCtx, err := cc.server.driver.OpenCtx(cc.connectionID, cc.capability, cc.collation, cc.dbname, tlsStatePtr)
+	tidbCtx, err := cc.server.driver.OpenCtx(cc.connectionID, cc.capability, cc.collation, cc.dbname, cc.tlsConn)
 	if err != nil {
 		return err
 	}
