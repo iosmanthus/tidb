@@ -793,7 +793,7 @@ func (e *SimpleExec) executeCreateUser(ctx context.Context, s *ast.CreateUserStm
 		return err
 	}
 
-	userPrefix := os.Getenv("TIDB_USER_PREFIX")
+	userPrefix := domain.GetUserPrefix()
 
 	sql := new(strings.Builder)
 	if s.IsCreateRole {
@@ -1413,7 +1413,7 @@ func userExistsWithRetryUserPrefix(ctx context.Context, sctx sessionctx.Context,
 		return true, nil
 	}
 	// Check if user exists with user prefix.
-	prefix := os.Getenv("TIDB_USER_PREFIX")
+	prefix := domain.GetUserPrefix()
 	if prefix == "" {
 		return false, nil
 	}
