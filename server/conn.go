@@ -44,7 +44,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 	"os/user"
 	"runtime/pprof"
 	"runtime/trace"
@@ -59,6 +58,7 @@ import (
 	"github.com/pingcap/errors"
 	"github.com/pingcap/failpoint"
 	"github.com/pingcap/tidb/config"
+	"github.com/pingcap/tidb/domain"
 	"github.com/pingcap/tidb/domain/infosync"
 	"github.com/pingcap/tidb/errno"
 	"github.com/pingcap/tidb/executor"
@@ -913,7 +913,7 @@ func (cc *clientConn) checkAuthPlugin(ctx context.Context, resp *handshakeRespon
 	identity, err := cc.ctx.MatchIdentity(cc.user, host)
 	if err != nil {
 		// try to append prefix
-		if prefix := os.Getenv("TIDB_USER_PREFIX"); prefix != "" {
+		if prefix := domain.GetUserPrefix(); prefix != "" {
 			user2 := prefix + "." + cc.user
 			identity2, err2 := cc.ctx.MatchIdentity(user2, host)
 			if err2 == nil {

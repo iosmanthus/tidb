@@ -23,7 +23,6 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
-	"os"
 	osuser "os/user"
 	"runtime/debug"
 	"strconv"
@@ -2005,7 +2004,7 @@ func inTestSuite() bool {
 // All the statements run in a single transaction.
 func doDMLWorks(s Session) {
 	rootUserName := "root"
-	if prefix := os.Getenv("TIDB_USER_PREFIX"); prefix != "" {
+	if prefix := domain.GetUserPrefix(); prefix != "" {
 		rootUserName = prefix + "." + rootUserName
 	}
 

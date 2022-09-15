@@ -36,13 +36,7 @@ var (
 // StandbyHandler returns a handler to query tidb pool status or activate or exit the tidb server.
 func StandbyHandler() *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/tidb-pool/status", func(w http.ResponseWriter, r *http.Request) {
-		mu.RLock()
-		defer mu.RUnlock()
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"state": "%s", "keyspace_name": "%s"}`, state, keyspaceName)
-	})
+	mux.HandleFunc("/tidb-pool/status", statusHandler)
 	mux.HandleFunc("/tidb-pool/activate", func(w http.ResponseWriter, r *http.Request) {
 		type activateRequest struct {
 			KeyspaceName string `json:"keyspace_name"`
@@ -82,7 +76,7 @@ func StandbyHandler() *http.ServeMux {
 			w.Write([]byte("timeout waiting for activation"))
 			os.Exit(1)
 		case <-serverIsReadyCh:
-			w.WriteHeader(http.StatusOK)
+			statusHandler(w, r)
 		}
 	})
 	mux.HandleFunc("/tidb-pool/exit", func(w http.ResponseWriter, r *http.Request) {
@@ -92,13 +86,24 @@ func StandbyHandler() *http.ServeMux {
 	return mux
 }
 
+func statusHandler(w http.ResponseWriter, r *http.Request) {
+	mu.RLock()
+	defer mu.RUnlock()
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, `{"state": "%s", "keyspace_name": "%s"}`, state, keyspaceName)
+}
+
 var server *http.Server
 
 // StartStandby starts a http server to listen and wait for activation signal.
 func StartStandby(host string, port uint, timeout uint) string {
+	mux := StandbyHandler()
+	// handle liveness probe.
+	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 	server = &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", host, port),
-		Handler: StandbyHandler(),
+		Handler: mux,
 	}
 	activationTimeout = timeout
 	logutil.BgLogger().Info("tidb-server is now running as standby, waiting for activation...", zap.String("addr", server.Addr))
