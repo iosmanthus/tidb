@@ -118,10 +118,13 @@ const (
 
 	nmInitializeSecure   = "initialize-secure"
 	nmInitializeInsecure = "initialize-insecure"
-
+  
 	nmStandby           = "standby"
 	nmActivationTimeout = "activation-timeout"
 	nmMaxIdleSeconds    = "max-idle-seconds"
+  
+  
+	nmBootstrapSQLFile = "bootstrap-sql-file"
 )
 
 var (
@@ -172,6 +175,9 @@ var (
 	standbyMode       = flagBoolean(nmStandby, false, "start tidb-server as standby")
 	activationTimeout = flag.Uint(nmActivationTimeout, 10, "max time in second allowed for tidb to activate from standby, 0 means no limit")
 	maxIdleSeconds    = flag.Uint(nmMaxIdleSeconds, 0, "max idle seconds for a connection, 0 means no limit")
+  
+  // Bootstrap SQL File
+	bootstrapSQLFile = flag.String(nmBootstrapSQLFile, "", "path to file that contains SQL statements to initialize database")
 )
 
 func main() {
@@ -232,6 +238,8 @@ func main() {
 	keyspaceName := domain.GetKeyspaceNameBySettings()
 	storage, dom := createStoreAndDomain(keyspaceName)
 	svr := createServer(storage, dom)
+
+	session.RunBootstrapSQL(storage)
 
 	// Register error API is not thread-safe, the caller MUST NOT register errors after initialization.
 	// To prevent misuse, set a flag to indicate that register new error will panic immediately.
@@ -573,6 +581,10 @@ func overrideConfig(cfg *config.Config) {
 
 	if actualFlags[nmMaxIdleSeconds] {
 		cfg.MaxIdleSeconds = *maxIdleSeconds
+	}
+
+	if actualFlags[nmBootstrapSQLFile] {
+		cfg.BootstrapSQLFile = *bootstrapSQLFile
 	}
 }
 

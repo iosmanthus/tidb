@@ -277,6 +277,9 @@ type Config struct {
 	CheckMb4ValueInUTF8        AtomicBool `toml:"check-mb4-value-in-utf8" json:"check-mb4-value-in-utf8"`
 	EnableCollectExecutionInfo bool       `toml:"enable-collect-execution-info" json:"enable-collect-execution-info"`
 	Plugin                     Plugin     `toml:"plugin" json:"plugin"`
+
+	// BootstrapSQLFile is the path to SQL file to run during bootstrap.
+	BootstrapSQLFile string `toml:"bootstrap-sql-file" json:"bootstrap-sql-file"`
 }
 
 // UpdateTempStoragePath is to update the `TempStoragePath` if port/statusPort was changed
