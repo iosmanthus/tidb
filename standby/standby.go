@@ -31,6 +31,7 @@ var (
 var (
 	activateCh      = make(chan struct{}, 1)
 	serverIsReadyCh = make(chan struct{})
+	startServerErr  error
 )
 
 // StandbyHandler returns a handler to query tidb pool status or activate or exit the tidb server.
@@ -65,19 +66,23 @@ func StandbyHandler() *http.ServeMux {
 		// if client tries to activate with same keyspace name, wait for ready signal and return 200.
 		mu.Unlock()
 
-		// If no limit posted on activation time, wait for serverIsReady indefinitely.
-		if activationTimeout == 0 {
-			<-serverIsReadyCh
-			statusHandler(w, r)
-			return
+		timeout := make(<-chan time.Time)
+		if activationTimeout > 0 {
+			timeout = time.After(time.Duration(activationTimeout) * time.Second)
 		}
+
 		select {
-		case <-time.After(time.Duration(activationTimeout) * time.Second):
+		case <-timeout:
 			logutil.BgLogger().Warn("timeout waiting for activation")
 			w.WriteHeader(http.StatusRequestTimeout)
 			w.Write([]byte("timeout waiting for activation"))
 			os.Exit(1)
 		case <-serverIsReadyCh:
+			if startServerErr != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(startServerErr.Error()))
+				return
+			}
 			statusHandler(w, r)
 		}
 	})
@@ -124,7 +129,8 @@ func StartStandby(host string, port uint, timeout uint) string {
 }
 
 // EndStandby is used to notify the temp http server that the tidb server is ready.
-func EndStandby() error {
+func EndStandby(err error) error {
+	startServerErr = err
 	close(serverIsReadyCh)
 	if server != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

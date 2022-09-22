@@ -294,7 +294,7 @@ func NewServer(cfg *config.Config, driver IDriver) (*Server, error) {
 	}
 
 	if s.cfg.StandByMode {
-		standby.EndStandby()
+		standby.EndStandby(nil)
 	}
 
 	if s.cfg.Status.ReportStatus {
