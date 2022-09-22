@@ -225,7 +225,8 @@ func NewMgr(
 	}
 
 	// Disable GC because TiDB enables GC already.
-	storage, err := g.Open(fmt.Sprintf("tikv://%s?disableGC=true", pdAddrs), securityOption)
+	path := fmt.Sprintf("tikv://%s?disableGC=true&keyspaceName=%s", pdAddrs, domain.GetKeyspaceNameBySettings())
+	storage, err := g.Open(path, securityOption)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -246,10 +247,11 @@ func NewMgr(
 		// we will keep this check until 7.0, which allow the breaking changes.
 		// NOTE: must call it after domain created!
 		// FIXME: remove this check in v7.0
-		err = version.CheckClusterVersion(ctx, controller.GetPDClient(), version.CheckVersionForDDL)
-		if err != nil {
-			return nil, errors.Annotate(err, "unable to check cluster version for ddl")
-		}
+		// TODO: upgrade cloud storage engine to v6.2.0 or later version
+		// err = version.CheckClusterVersion(ctx, controller.GetPDClient(), version.CheckVersionForDDL)
+		// if err != nil {
+		// 	return nil, errors.Annotate(err, "unable to check cluster version for ddl")
+		// }
 	}
 
 	mgr := &Mgr{
