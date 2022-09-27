@@ -2,11 +2,12 @@ package session
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"io"
-	"os"
 	"runtime/debug"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/pingcap/tidb/config"
@@ -61,16 +62,21 @@ func doBootstrapSQL(s Session, reader io.Reader) {
 	}
 }
 
-func runBootstrapSQL(s Session) bool {
+func runBootstrapSQL(s Session, params map[string]string) bool {
 	startTime := time.Now()
 	dom := domain.GetDomain(s)
 
 	executed := false
-	var cfgFile *os.File
-	var err error
 	for {
-		if cfgFile, err = os.Open(config.GetGlobalConfig().BootstrapSQLFile); err != nil {
+		tpl, err := template.ParseFiles(config.GetGlobalConfig().BootstrapSQLFile)
+		if err != nil {
 			fatalLog("Failed to open bootstrap sql file", err)
+		}
+
+		var buf bytes.Buffer
+		err = tpl.Execute(&buf, params)
+		if err != nil {
+			fatalLog("Failed to execute template", err)
 		}
 
 		if ts := getBootstrapSQLTimestamp(s.GetStore()); ts != notBootstrapped {
@@ -83,21 +89,16 @@ func runBootstrapSQL(s Session) bool {
 		// To reduce conflict when multiple TiDB-server start at the same time.
 		// Actually only one server need to execute bootstrap sql. So we chose DDL owner to do this.
 		if dom.DDL().OwnerManager().IsOwner() {
-			doBootstrapSQL(s, cfgFile)
+			doBootstrapSQL(s, &buf)
 			logutil.BgLogger().Info("Bootstrap SQL executed successfully",
 				zap.Duration("take time", time.Since(startTime)))
 			executed = true
 			break
 		}
 
-		cfgFile.Close()
-		cfgFile = nil
 		time.Sleep(200 * time.Millisecond)
 	}
 
-	if cfgFile != nil {
-		cfgFile.Close()
-	}
 	return executed
 }
 
@@ -120,7 +121,7 @@ func RunBootstrapSQL(storage kv.Storage) {
 		logutil.BgLogger().Fatal("CreateSession error when executing bootstrap sql", zap.Error(err))
 	}
 
-	if runBootstrapSQL(s) {
+	if runBootstrapSQL(s, cfg.BootstrapSQLParams) {
 		ctx := kv.WithInternalSourceType(context.Background(), kv.InternalTxnBootstrap)
 		err = kv.RunInNewTxn(ctx, storage, true, func(ctx context.Context, txn kv.Transaction) error {
 			return meta.NewMeta(txn).SetInt64Key(mBootstrapSQLKey, int64(txn.StartTS()))

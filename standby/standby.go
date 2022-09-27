@@ -19,10 +19,16 @@ const (
 	activatedState = "activated"
 )
 
+// ActivateRequest is the request body for activating the tidb server.
+type ActivateRequest struct {
+	KeyspaceName    string            `json:"keyspace_name"`
+	BootstrapParams map[string]string `json:"bootstrap_params"`
+}
+
 var (
-	mu           sync.RWMutex
-	state        = standbyState
-	keyspaceName string
+	mu              sync.RWMutex
+	state           = standbyState
+	activateRequest ActivateRequest
 
 	// activationTimeout specifies the maximum allowed time for tidb to activate from standby mode.
 	activationTimeout uint
@@ -39,10 +45,7 @@ func StandbyHandler() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/tidb-pool/status", statusHandler)
 	mux.HandleFunc("/tidb-pool/activate", func(w http.ResponseWriter, r *http.Request) {
-		type activateRequest struct {
-			KeyspaceName string `json:"keyspace_name"`
-		}
-		var req activateRequest
+		var req ActivateRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -55,9 +58,9 @@ func StandbyHandler() *http.ServeMux {
 		mu.Lock()
 		if state == standbyState {
 			state = activatedState
-			keyspaceName = req.KeyspaceName
+			activateRequest = req
 			activateCh <- struct{}{}
-		} else if keyspaceName != req.KeyspaceName {
+		} else if activateRequest.KeyspaceName != req.KeyspaceName {
 			mu.Unlock()
 			w.WriteHeader(http.StatusPreconditionFailed)
 			w.Write([]byte("server is not in standby mode"))
@@ -98,13 +101,13 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 	defer mu.RUnlock()
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, `{"state": "%s", "keyspace_name": "%s"}`, state, keyspaceName)
+	fmt.Fprintf(w, `{"state": "%s", "keyspace_name": "%s"}`, state, activateRequest.KeyspaceName)
 }
 
 var server *http.Server
 
 // StartStandby starts a http server to listen and wait for activation signal.
-func StartStandby(host string, port uint, timeout uint) string {
+func StartStandby(host string, port uint, timeout uint) ActivateRequest {
 	mux := StandbyHandler()
 	// handle liveness probe.
 	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
@@ -125,7 +128,7 @@ func StartStandby(host string, port uint, timeout uint) string {
 
 	mu.RLock()
 	defer mu.RUnlock()
-	return keyspaceName
+	return activateRequest
 }
 
 // EndStandby is used to notify the temp http server that the tidb server is ready.

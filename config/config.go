@@ -280,6 +280,8 @@ type Config struct {
 
 	// BootstrapSQLFile is the path to SQL file to run during bootstrap.
 	BootstrapSQLFile string `toml:"bootstrap-sql-file" json:"bootstrap-sql-file"`
+	// BootstrapSQLParams is the parameters for bootstrap SQL file.
+	BootstrapSQLParams map[string]string `toml:"bootstra-sql-params" json:"bootstrap-sql-params"`
 }
 
 // UpdateTempStoragePath is to update the `TempStoragePath` if port/statusPort was changed

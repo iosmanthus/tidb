@@ -197,12 +197,13 @@ func main() {
 	mainErrHandler := func(err error) { terror.MustNil(err) }
 
 	if config.GetGlobalConfig().StandByMode {
-		keyspace := standby.StartStandby(
+		activateRequest := standby.StartStandby(
 			config.GetGlobalConfig().Status.StatusHost,
 			config.GetGlobalConfig().Status.StatusPort,
 			config.GetGlobalConfig().ActivationTimeout)
 		config.UpdateGlobal(func(c *config.Config) {
-			c.KeyspaceName = keyspace
+			c.KeyspaceName = activateRequest.KeyspaceName
+			c.BootstrapSQLParams = activateRequest.BootstrapParams
 		})
 		maxIdleSeconds := int(config.GetGlobalConfig().MaxIdleSeconds)
 		if maxIdleSeconds > 0 {
