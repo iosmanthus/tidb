@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/pingcap/kvproto/pkg/pdpb"
 	"io"
 	"net/http"
 	"os"
@@ -45,7 +46,6 @@ import (
 	"github.com/pingcap/tidb/parser/terror"
 	"github.com/pingcap/tidb/sessionctx/binloginfo"
 	"github.com/pingcap/tidb/sessionctx/variable"
-	store2 "github.com/pingcap/tidb/store"
 	"github.com/pingcap/tidb/store/helper"
 	"github.com/pingcap/tidb/types"
 	util2 "github.com/pingcap/tidb/util"
@@ -444,6 +444,14 @@ func removeVAndHash(v string) string {
 	return strings.TrimPrefix(v, "v")
 }
 
+// IsNotBootstrappedError returns true if the error is pd not bootstrapped error.
+func IsNotBootstrappedError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), pdpb.ErrorType_NOT_BOOTSTRAPPED.String())
+}
+
 // CheckTiKVVersion is used to check the tikv version.
 func CheckTiKVVersion(store kv.Storage, minVersion semver.Version) error {
 	if store, ok := store.(kv.StorageWithPD); ok {
@@ -453,7 +461,7 @@ func CheckTiKVVersion(store kv.Storage, minVersion semver.Version) error {
 		var err error
 		err = util2.RunWithRetry(util2.DefaultMaxRetries, util2.RetryInterval, func() (bool, error) {
 			stores, err = pdClient.GetAllStores(context.Background(), pd.WithExcludeTombstone())
-			return store2.IsNotBootstrappedError(err), err
+			return IsNotBootstrappedError(err), err
 		})
 
 		if err != nil {

@@ -751,7 +751,7 @@ func TestDeleteRangesFailure(t *testing.T) {
 				failKey = ranges[0].StartKey
 				failStore = stores[0]
 
-				err = deleteRangeFunc(gcContext(), 20, 1)
+				err = deleteRangeFunc(gcContext(), 20, 1, s.gcWorker.store)
 				require.NoError(t, err)
 
 				s.checkDestroyRangeReq(t, sendReqCh, ranges, stores)
@@ -767,7 +767,7 @@ func TestDeleteRangesFailure(t *testing.T) {
 				failStore = nil
 
 				// Delete the remaining range again.
-				err = deleteRangeFunc(gcContext(), 20, 1)
+				err = deleteRangeFunc(gcContext(), 20, 1, s.gcWorker.store)
 				require.NoError(t, err)
 				s.checkDestroyRangeReq(t, sendReqCh, ranges[:1], stores)
 
