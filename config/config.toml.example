@@ -117,6 +117,15 @@ enable-enum-length-limit = true
 # command can be forwarded to the right TiDB instance to execute.
 enable-global-kill = true
 
+# Set keyspace name in multi-tenant scenario.
+# If don't set keyspace_name or keyspace_name == "", it means the keyspace name is not set, and in single-tenant.
+# All architectures and request should keep the single-tenant design.
+keyspace-name = ""
+
+# Specify a sql file to execute during bootstrap.
+# This can be used to set-up SEM privileges before enabling it.
+bootstrap-sql-file = ""
+
 [log]
 # Log level: debug, info, warn, error, fatal.
 level = "info"
@@ -462,12 +471,3 @@ tidb_record_plan_in_slow_log = 1
 
 # The maximum permitted number of simultaneous client connections. When the value is 0, the number of connections is unlimited.
 max_connections = 0
-
-# Set keyspace name in multi-tenant scenario.
-# If don't set keyspace_name or keyspace_name == "", it means the keyspace name is not set, and in single-tenant.
-# All architectures and request should keep the single-tenant design.
-keyspace-name = ""
-
-# Specify a sql file to execute during bootstrap.
-# This can be used to set-up SEM privileges before enabling it.
-bootstrap-sql-file = ""
