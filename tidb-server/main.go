@@ -75,6 +75,7 @@ import (
 	"github.com/pingcap/tidb/util/versioninfo"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/push"
+	tikvconfig "github.com/tikv/client-go/v2/config"
 	"github.com/tikv/client-go/v2/tikv"
 	"github.com/tikv/client-go/v2/txnkv/transaction"
 	pd "github.com/tikv/pd/client"
@@ -215,6 +216,31 @@ func main() {
 				standby.EndStandby(err)
 				os.Exit(1)
 			}
+		}
+		// load keyspace and set metric labels.
+		cfg := config.GetGlobalConfig()
+		if strings.ToLower(cfg.Store) == "tikv" {
+			etcdAddrs, _, _, err := tikvconfig.ParsePath("tikv://" + cfg.Path)
+			mainErrHandler(err)
+			pdCli, err := pd.NewClient(etcdAddrs, pd.SecurityOption{
+				CAPath:   cfg.Security.ClusterSSLCA,
+				CertPath: cfg.Security.ClusterSSLCert,
+				KeyPath:  cfg.Security.ClusterSSLKey,
+			},
+				pd.WithCustomTimeoutOption(time.Duration(cfg.PDClient.PDServerTimeout)*time.Second),
+			)
+			mainErrHandler(err)
+			keyspaceMeta, err := pdCli.LoadKeyspace(context.TODO(), activateRequest.KeyspaceName)
+			mainErrHandler(err)
+			metrics.ServerlessTenantID = keyspaceMeta.Config["serverless_tenant_id"]
+			metrics.ServerlessProjectID = keyspaceMeta.Config["serverless_project_id"]
+			metrics.ServerlessClusterID = keyspaceMeta.Config["serverless_cluster_id"]
+			log.Info("serverless cluster info loaded",
+				zap.String("tenant-id", metrics.ServerlessTenantID),
+				zap.String("project-id", metrics.ServerlessProjectID),
+				zap.String("cluster-id", metrics.ServerlessClusterID),
+			)
+			pdCli.Close()
 		}
 	}
 
