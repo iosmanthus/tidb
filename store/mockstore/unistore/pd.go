@@ -42,8 +42,22 @@ func (c *pdClient) LoadKeyspace(ctx context.Context, name string) (*keyspacepb.K
 }
 
 func (c *pdClient) WatchKeyspaces(ctx context.Context) (chan []*keyspacepb.KeyspaceMeta, error) {
-	//TODO implement me, introduce keyspace
-	panic("unimplemented")
+	keyspaceWatcherChan := make(chan []*keyspacepb.KeyspaceMeta, 16)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				return
+			}
+		}()
+		select {
+		case <-ctx.Done():
+			close(keyspaceWatcherChan)
+			return
+		default:
+			keyspaceWatcherChan <- []*keyspacepb.KeyspaceMeta{}
+		}
+	}()
+	return keyspaceWatcherChan, nil
 }
 
 func newPDClient(pd *us.MockPD) *pdClient {
