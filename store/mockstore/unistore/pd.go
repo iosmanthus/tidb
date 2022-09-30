@@ -42,6 +42,9 @@ func (c *pdClient) LoadKeyspace(ctx context.Context, name string) (*keyspacepb.K
 }
 
 func (c *pdClient) WatchKeyspaces(ctx context.Context) (chan []*keyspacepb.KeyspaceMeta, error) {
+
+	// TODO This pdClient need to support the func of create keyspace and update keyspace meta.
+
 	keyspaceWatcherChan := make(chan []*keyspacepb.KeyspaceMeta, 16)
 	go func() {
 		defer func() {

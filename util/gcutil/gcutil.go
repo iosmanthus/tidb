@@ -22,7 +22,6 @@ import (
 	"github.com/pingcap/tidb/parser/model"
 	"github.com/pingcap/tidb/sessionctx"
 	"github.com/pingcap/tidb/sessionctx/variable"
-	"github.com/pingcap/tidb/util/logutil"
 	"github.com/pingcap/tidb/util/sqlexec"
 	"github.com/tikv/client-go/v2/oracle"
 	"github.com/tikv/client-go/v2/util"
@@ -80,8 +79,12 @@ func GetGCSafePoint(sctx sessionctx.Context) (uint64, error) {
 		return 0, errors.Trace(err)
 	}
 	if len(rows) != 1 {
-		logutil.BgLogger().Info("can not get 'tikv_gc_safe_point' via query, trying to get it form PD")
-		return GetGCSafePointFromPD(sctx)
+		keyspaceInfo := sctx.GetStore().GetCodec().GetKeyspace()
+		if keyspaceInfo != nil {
+			return GetGCSafePointFromPD(sctx)
+		} else {
+			return 0, errors.New("can not get 'tikv_gc_safe_point'")
+		}
 	}
 	safePointString := rows[0].GetString(0)
 	safePointTime, err := util.CompatibleParseGCTime(safePointString)
@@ -96,10 +99,13 @@ func GetGCSafePoint(sctx sessionctx.Context) (uint64, error) {
 func GetGCSafePointFromPD(sctx sessionctx.Context) (uint64, error) {
 	store, ok := sctx.GetStore().(kv.StorageWithPD)
 	if !ok {
-		return 0, errors.New("can not get 'tikv_gc_safe_point' from PD")
+		return 0, errors.New("can not get 'tikv_gc_safe_point'")
 	}
 	pdCli := store.GetPDClient()
 	safePoint, err := pdCli.UpdateGCSafePoint(context.Background(), 0)
+	if safePoint == 0 {
+		return 0, errors.New("can not get 'tikv_gc_safe_point'")
+	}
 	if err != nil {
 		return 0, err
 	}
