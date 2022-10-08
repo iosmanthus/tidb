@@ -50,8 +50,9 @@ func Register(name string, driver kv.Driver) error {
 // The path must be a URL format 'engine://path?params' like the one for
 // session.Open() but with the dbname cut off.
 // Examples:
-//    goleveldb://relative/path
-//    boltdb:///absolute/path
+//
+//	goleveldb://relative/path
+//	boltdb:///absolute/path
 //
 // The engine should be registered before creating storage.
 func New(path string) (kv.Storage, error) {
@@ -74,7 +75,7 @@ func newStoreWithRetry(path string, maxRetries int) (kv.Storage, error) {
 	err = util.RunWithRetry(maxRetries, util.RetryInterval, func() (bool, error) {
 		logutil.BgLogger().Info("new store", zap.String("path", path))
 		s, err = d.Open(path)
-		return kv.IsTxnRetryableError(err) || IsNotBootstrappedError(err), err
+		return isNewStoreRetryableError(err), err
 	})
 
 	if err == nil {
@@ -92,10 +93,31 @@ func loadDriver(name string) (kv.Driver, bool) {
 	return d, ok
 }
 
-// IsNotBootstrappedError returns true if the error is pd not bootstrapped error.
-func IsNotBootstrappedError(err error) bool {
+// isOpenRetryableError check if the new store operation should be retried under given error
+// currently, it should be retried if:
+//
+//	Transaction conflict and is retryable (kv.IsTxnRetryableError)
+//	PD is not bootstrapped at the time of request
+//	Keyspace requested does not exist (request prior to PD keyspace pre-split)
+func isNewStoreRetryableError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return kv.IsTxnRetryableError(err) || isNotBootstrappedError(err) || isKeyspaceNotExistError(err)
+}
+
+// isNotBootstrappedError returns true if the error is pd not bootstrapped error.
+func isNotBootstrappedError(err error) bool {
 	if err == nil {
 		return false
 	}
 	return strings.Contains(err.Error(), pdpb.ErrorType_NOT_BOOTSTRAPPED.String())
+}
+
+// isKeyspaceNotExistError returns true the error is caused by keyspace not exists.
+func isKeyspaceNotExistError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), pdpb.ErrorType_ENTRY_NOT_FOUND.String())
 }
