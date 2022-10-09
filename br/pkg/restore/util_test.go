@@ -5,8 +5,9 @@ package restore_test
 import (
 	"context"
 	"encoding/binary"
-	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"testing"
+
+	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 
 	"github.com/pingcap/failpoint"
 	backuppb "github.com/pingcap/kvproto/pkg/brpb"
@@ -48,8 +49,8 @@ func TestGetSSTMetaFromFile(t *testing.T) {
 		NewKeyPrefix: []byte("t2"),
 	}
 	region := &metapb.Region{
-		StartKey: []byte("t2abc"),
-		EndKey:   []byte("t3a"),
+		StartKey: codec.EncodeBytes([]byte{}, []byte("t2abc")),
+		EndKey:   codec.EncodeBytes([]byte{}, []byte("t3a")),
 	}
 	sstMeta, err := restore.GetSSTMetaFromFile([]byte{}, file, region, rule)
 	require.Nil(t, err)

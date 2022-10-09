@@ -425,7 +425,7 @@ func (s *streamMgr) backupFullSchemas(ctx context.Context, g glue.Glue) error {
 	return nil
 }
 
-// RunStreamCommand run all kinds of `stream task``
+// RunStreamCommand run all kinds of `stream task“
 func RunStreamCommand(
 	ctx context.Context,
 	g glue.Glue,
@@ -496,7 +496,7 @@ func RunStreamStart(
 	if err = streamMgr.setGCSafePoint(
 		ctx,
 		utils.BRServiceSafePoint{
-			ID:       utils.MakeSafePointID(),
+			ID:       utils.MakeSafePointID(streamMgr.mgr.GetStorage().GetCodec().GetKeyspace()),
 			TTL:      cfg.SafePointTTL,
 			BackupTS: cfg.StartTS,
 		},

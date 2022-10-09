@@ -4,6 +4,7 @@ package utils
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"time"
 
@@ -28,6 +29,8 @@ const (
 	DefaultStreamStartSafePointTTL = 1800
 	// DefaultStreamPauseSafePointTTL specifies Keeping the server safePoint at list 24h when pause task.
 	DefaultStreamPauseSafePointTTL = 24 * 3600
+	// brKeyspaceServiceSafePointIDFormat is used when a specific keyspace is given.
+	brKeyspaceServiceSafePointIDFormat = "br-%d-%s"
 )
 
 // BRServiceSafePoint is metadata of service safe point from a BR 'instance'.
@@ -59,7 +62,15 @@ func getGCSafePoint(ctx context.Context, pdClient pd.Client) (uint64, error) {
 }
 
 // MakeSafePointID makes a unique safe point ID, for reduce name conflict.
-func MakeSafePointID() string {
+// If an optional keyspace string is given, it will encode it into the safe point ID
+// to further reduce the probability of collision when multiple keyspaces have BR running.
+func MakeSafePointID(keyspacePrefix []byte) string {
+	if len(keyspacePrefix) == 4 {
+		b := make([]byte, 4)
+		copy(b[1:4], keyspacePrefix[1:4])
+		keyspaceID := binary.BigEndian.Uint32(b)
+		return fmt.Sprintf(brKeyspaceServiceSafePointIDFormat, keyspaceID, uuid.New())
+	}
 	return fmt.Sprintf(brServiceSafePointIDFormat, uuid.New())
 }
 

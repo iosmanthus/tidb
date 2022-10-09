@@ -5,7 +5,6 @@ package task
 import (
 	"context"
 	"fmt"
-	"github.com/pingcap/tidb/config"
 	"os"
 	"strconv"
 	"strings"
@@ -27,6 +26,8 @@ import (
 	"github.com/pingcap/tidb/br/pkg/storage"
 	"github.com/pingcap/tidb/br/pkg/summary"
 	"github.com/pingcap/tidb/br/pkg/utils"
+	"github.com/pingcap/tidb/config"
+	"github.com/pingcap/tidb/domain"
 	"github.com/pingcap/tidb/parser/mysql"
 	"github.com/pingcap/tidb/sessionctx/stmtctx"
 	"github.com/pingcap/tidb/statistics/handle"
@@ -316,7 +317,7 @@ func RunBackup(c context.Context, g glue.Glue, cmdName string, cfg *BackupConfig
 	sp := utils.BRServiceSafePoint{
 		BackupTS: backupTS,
 		TTL:      client.GetGCTTL(),
-		ID:       utils.MakeSafePointID(),
+		ID:       utils.MakeSafePointID(mgr.GetStorage().GetCodec().GetKeyspace()),
 	}
 	// use lastBackupTS as safePoint if exists
 	if cfg.LastBackupTS > 0 {
@@ -331,7 +332,9 @@ func RunBackup(c context.Context, g glue.Glue, cmdName string, cfg *BackupConfig
 
 	isIncrementalBackup := cfg.LastBackupTS > 0
 
-	if cfg.RemoveSchedulers {
+	if cfg.RemoveSchedulers && !domain.IsKeyspaceNameEmpty(cfg.KeyspaceName) {
+		log.Info("skip removing PD schedulers while backing up specific keyspace's data")
+	} else if cfg.RemoveSchedulers {
 		log.Debug("removing some PD schedulers")
 		restore, e := mgr.RemoveSchedulers(ctx)
 		defer func() {

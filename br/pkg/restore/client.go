@@ -10,7 +10,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"math"
 	"strconv"
 	"strings"
@@ -22,6 +21,7 @@ import (
 	"github.com/pingcap/failpoint"
 	backuppb "github.com/pingcap/kvproto/pkg/brpb"
 	"github.com/pingcap/kvproto/pkg/import_sstpb"
+	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/log"
 	"github.com/pingcap/tidb/br/pkg/backup"
@@ -168,6 +168,9 @@ type Client struct {
 
 	// see RestoreCommonConfig.WithSysTable
 	withSysTable bool
+
+	// Target keyspace's name for the data restoration.
+	keyspaceName string
 }
 
 // NewRestoreClient returns a new RestoreClient.
@@ -234,6 +237,11 @@ func (rc *Client) Init(g glue.Glue, store kv.Storage) error {
 
 // SetPlacementPolicyMode to policy mode.
 func (rc *Client) SetPlacementPolicyMode(withPlacementPolicy string) {
+	if rc.IsKeyspaceMode() {
+		log.Info("ignore placement policy when keyspaceName is set", zap.String("mode", rc.policyMode))
+		rc.policyMode = ignorePlacementPolicyMode
+		return
+	}
 	switch strings.ToUpper(withPlacementPolicy) {
 	case strictPlacementPolicyMode:
 		rc.policyMode = strictPlacementPolicyMode
@@ -1476,8 +1484,10 @@ func (rc *Client) ResetRestoreLabels(ctx context.Context) error {
 }
 
 // SetupPlacementRules sets rules for the tables' regions.
+// This is only performed when using Online Restore mode with at least one restore stores.
+// This is also skipped when keyspaceName is set.
 func (rc *Client) SetupPlacementRules(ctx context.Context, tables []*model.TableInfo) error {
-	if !rc.isOnline || len(rc.restoreStores) == 0 {
+	if !rc.isOnline || len(rc.restoreStores) == 0 || rc.IsKeyspaceMode() {
 		return nil
 	}
 	log.Info("start setting placement rules")
@@ -1507,7 +1517,7 @@ func (rc *Client) SetupPlacementRules(ctx context.Context, tables []*model.Table
 
 // WaitPlacementSchedule waits PD to move tables to restore stores.
 func (rc *Client) WaitPlacementSchedule(ctx context.Context, tables []*model.TableInfo) error {
-	if !rc.isOnline || len(rc.restoreStores) == 0 {
+	if !rc.isOnline || len(rc.restoreStores) == 0 || rc.IsKeyspaceMode() {
 		return nil
 	}
 	log.Info("start waiting placement schedule")
@@ -1567,7 +1577,7 @@ func (rc *Client) checkRange(ctx context.Context, start, end []byte) (bool, stri
 
 // ResetPlacementRules removes placement rules for tables.
 func (rc *Client) ResetPlacementRules(ctx context.Context, tables []*model.TableInfo) error {
-	if !rc.isOnline || len(rc.restoreStores) == 0 {
+	if !rc.isOnline || len(rc.restoreStores) == 0 || rc.IsKeyspaceMode() {
 		return nil
 	}
 	log.Info("start reseting placement rules")
@@ -2501,6 +2511,16 @@ func (rc *Client) IsFullClusterRestore() bool {
 
 func (rc *Client) SetWithSysTable(withSysTable bool) {
 	rc.withSysTable = withSysTable
+}
+
+// SetKeyspaceName set the keyspace name for the restore client.
+func (rc *Client) SetKeyspaceName(keyspaceName string) {
+	rc.keyspaceName = keyspaceName
+}
+
+// IsKeyspaceMode indicates whether BR is restoring a specific keyspace's data.
+func (rc *Client) IsKeyspaceMode() bool {
+	return !domain.IsKeyspaceNameEmpty(rc.keyspaceName)
 }
 
 // MockClient create a fake client used to test.
