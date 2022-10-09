@@ -31,6 +31,7 @@ RUN if [ -n "$GITHUB_TOKEN" ]; then git config --global url."https://${GITHUB_TO
 ENV GOPRIVATE=github.com/tidbcloud
 # Overwrite the minimum required tikv version to be compatible with cloud-storage-engine
 ENV MIN_TIKV_VERSION=6.1.0
+ENV REGISTER_METRICS_INIT=false
 
 RUN GO111MODULE=on go mod download
 

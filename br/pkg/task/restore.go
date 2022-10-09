@@ -253,9 +253,12 @@ func (cfg *RestoreConfig) ParseFromFlags(flags *pflag.FlagSet) error {
 	}
 
 	cfg.KeyspaceName, err = flags.GetString(FlagKeyspaceName)
+
 	if err != nil {
 		return errors.Annotatef(err, "failed to get flag %s", FlagKeyspaceName)
 	}
+
+	InitMetrics(cfg.PD, cfg.KeyspaceName)
 
 	return nil
 }

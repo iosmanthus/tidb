@@ -217,34 +217,12 @@ func main() {
 				os.Exit(1)
 			}
 		}
-		// load keyspace and set metric labels.
-		cfg := config.GetGlobalConfig()
-		if strings.ToLower(cfg.Store) == "tikv" {
-			etcdAddrs, _, _, err := tikvconfig.ParsePath("tikv://" + cfg.Path)
-			mainErrHandler(err)
-			pdCli, err := pd.NewClient(etcdAddrs, pd.SecurityOption{
-				CAPath:   cfg.Security.ClusterSSLCA,
-				CertPath: cfg.Security.ClusterSSLCert,
-				KeyPath:  cfg.Security.ClusterSSLKey,
-			},
-				pd.WithCustomTimeoutOption(time.Duration(cfg.PDClient.PDServerTimeout)*time.Second),
-			)
-			mainErrHandler(err)
-			keyspaceMeta, err := pdCli.LoadKeyspace(context.TODO(), activateRequest.KeyspaceName)
-			mainErrHandler(err)
-			metrics.ServerlessTenantID = keyspaceMeta.Config["serverless_tenant_id"]
-			metrics.ServerlessProjectID = keyspaceMeta.Config["serverless_project_id"]
-			metrics.ServerlessClusterID = keyspaceMeta.Config["serverless_cluster_id"]
-			log.Info("serverless cluster info loaded",
-				zap.String("tenant-id", metrics.ServerlessTenantID),
-				zap.String("project-id", metrics.ServerlessProjectID),
-				zap.String("cluster-id", metrics.ServerlessClusterID),
-			)
-			pdCli.Close()
-		}
 	}
 
 	registerStores()
+
+	// load keyspace and set metric labels.
+	getServerlessInfo()
 	registerMetrics()
 	if config.GetGlobalConfig().OOMUseTmpStorage {
 		config.GetGlobalConfig().UpdateTempStoragePath()
@@ -303,6 +281,41 @@ func main() {
 	terror.MustNil(svr.Run())
 	<-exited
 	syncLog()
+}
+
+func getServerlessInfo() error {
+	// load keyspace and set metric labels.
+	cfg := config.GetGlobalConfig()
+	if strings.ToLower(cfg.Store) == "tikv" {
+
+		etcdAddrs, _, _, err := tikvconfig.ParsePath("tikv://" + cfg.Path)
+		if err != nil {
+			return err
+		}
+		pdCli, err := pd.NewClient(etcdAddrs, pd.SecurityOption{
+			CAPath:   cfg.Security.ClusterSSLCA,
+			CertPath: cfg.Security.ClusterSSLCert,
+			KeyPath:  cfg.Security.ClusterSSLKey,
+		},
+			pd.WithCustomTimeoutOption(time.Duration(cfg.PDClient.PDServerTimeout)*time.Second),
+		)
+		if err != nil {
+			return err
+		}
+		log.Info("serverless cluster info loading...")
+		keyspaceMeta, err := pdCli.LoadKeyspace(context.TODO(), cfg.KeyspaceName)
+		if err != nil {
+			return err
+		}
+		metrics.SetServerlessLabels(keyspaceMeta.Config["serverless_tenant_id"],
+			keyspaceMeta.Config["serverless_project_id"],
+			keyspaceMeta.Config["serverless_cluster_id"])
+		log.Info("serverless cluster info loaded",
+			zap.Any("labels", metrics.ServerlessLabels),
+		)
+		pdCli.Close()
+	}
+	return nil
 }
 
 func syncLog() {
@@ -370,6 +383,7 @@ func registerStores() {
 }
 
 func registerMetrics() {
+	metrics.DefineMetrics()
 	metrics.RegisterMetrics()
 	if config.GetGlobalConfig().Store == "unistore" {
 		uni_metrics.RegisterMetrics()

@@ -39,7 +39,6 @@ import (
 	"github.com/pingcap/tidb/expression/aggregation"
 	"github.com/pingcap/tidb/infoschema"
 	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/metrics"
 	"github.com/pingcap/tidb/parser/ast"
 	"github.com/pingcap/tidb/parser/model"
 	"github.com/pingcap/tidb/parser/mysql"
@@ -73,19 +72,6 @@ import (
 	"github.com/tikv/client-go/v2/txnkv"
 	"github.com/tikv/client-go/v2/txnkv/txnsnapshot"
 	"golang.org/x/exp/slices"
-)
-
-var (
-	executorCounterMergeJoinExec            = metrics.ExecutorCounter.WithLabelValues("MergeJoinExec")
-	executorCountHashJoinExec               = metrics.ExecutorCounter.WithLabelValues("HashJoinExec")
-	executorCounterHashAggExec              = metrics.ExecutorCounter.WithLabelValues("HashAggExec")
-	executorStreamAggExec                   = metrics.ExecutorCounter.WithLabelValues("StreamAggExec")
-	executorCounterSortExec                 = metrics.ExecutorCounter.WithLabelValues("SortExec")
-	executorCounterTopNExec                 = metrics.ExecutorCounter.WithLabelValues("TopNExec")
-	executorCounterNestedLoopApplyExec      = metrics.ExecutorCounter.WithLabelValues("NestedLoopApplyExec")
-	executorCounterIndexLookUpJoin          = metrics.ExecutorCounter.WithLabelValues("IndexLookUpJoin")
-	executorCounterIndexLookUpExecutor      = metrics.ExecutorCounter.WithLabelValues("IndexLookUpExecutor")
-	executorCounterIndexMergeReaderExecutor = metrics.ExecutorCounter.WithLabelValues("IndexMergeReaderExecutor")
 )
 
 // executorBuilder builds an Executor from a Plan.
@@ -2380,7 +2366,9 @@ func (b *executorBuilder) buildAnalyzeSamplingPushdown(task plannercore.AnalyzeC
 // From the paper "Random sampling for histogram construction: how much is enough?"'s Corollary 1 to Theorem 5,
 // for a table size n, histogram size k, maximum relative error in bin size f, and error probability gamma,
 // the minimum random sample size is
-//         r = 4 * k * ln(2*n/gamma) / f^2
+//
+//	r = 4 * k * ln(2*n/gamma) / f^2
+//
 // If we take f = 0.5, gamma = 0.01, n =1e6, we would got r = 305.82* k.
 // Since the there's log function over the table size n, the r grows slowly when the n increases.
 // If we take n = 1e12, a 300*k sample still gives <= 0.66 bin size error with probability 0.99.

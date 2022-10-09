@@ -7,6 +7,9 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/hex"
+	"github.com/pingcap/tidb/config"
+	"github.com/pingcap/tidb/metrics"
+	uni_metrics "github.com/pingcap/tidb/store/mockstore/unistore/metrics"
 	"net/url"
 	"os"
 	"path"
@@ -746,4 +749,39 @@ func normalizePDURL(pd string, useTLS bool) (string, error) {
 // see details https://github.com/pingcap/br/issues/675#issuecomment-753780742
 func gcsObjectNotFound(err error) bool {
 	return errors.Cause(err) == gcs.ErrObjectNotExist // nolint:errorlint
+}
+
+func InitMetrics(pdAddr []string, keyspaceName string) error {
+	// load keyspace and set metric labels.
+
+	securityOption := pd.SecurityOption{}
+	pdCli, err := pd.NewClient(pdAddr, pd.SecurityOption{
+		CAPath:   securityOption.CAPath,
+		CertPath: securityOption.CertPath,
+		KeyPath:  securityOption.KeyPath,
+	},
+		pd.WithCustomTimeoutOption(10*time.Second),
+	)
+	if err != nil {
+		return err
+	}
+	log.Info("serverless cluster info loading...")
+	keyspaceMeta, err := pdCli.LoadKeyspace(context.TODO(), keyspaceName)
+	if err != nil {
+		return err
+	}
+	metrics.SetServerlessLabels(keyspaceMeta.Config["serverless_tenant_id"],
+		keyspaceMeta.Config["serverless_project_id"],
+		keyspaceMeta.Config["serverless_cluster_id"])
+	log.Info("serverless cluster info loaded",
+		zap.Any("labels", metrics.ServerlessLabels),
+	)
+	pdCli.Close()
+
+	metrics.DefineMetrics()
+	metrics.RegisterMetrics()
+	if config.GetGlobalConfig().Store == "unistore" {
+		uni_metrics.RegisterMetrics()
+	}
+	return nil
 }

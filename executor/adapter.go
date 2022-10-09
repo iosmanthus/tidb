@@ -68,16 +68,6 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// metrics option
-var (
-	totalQueryProcHistogramGeneral  = metrics.TotalQueryProcHistogram.WithLabelValues(metrics.LblGeneral)
-	totalCopProcHistogramGeneral    = metrics.TotalCopProcHistogram.WithLabelValues(metrics.LblGeneral)
-	totalCopWaitHistogramGeneral    = metrics.TotalCopWaitHistogram.WithLabelValues(metrics.LblGeneral)
-	totalQueryProcHistogramInternal = metrics.TotalQueryProcHistogram.WithLabelValues(metrics.LblInternal)
-	totalCopProcHistogramInternal   = metrics.TotalCopProcHistogram.WithLabelValues(metrics.LblInternal)
-	totalCopWaitHistogramInternal   = metrics.TotalCopWaitHistogram.WithLabelValues(metrics.LblInternal)
-)
-
 // processinfoSetter is the interface use to set current running process info.
 type processinfoSetter interface {
 	SetProcessInfo(string, time.Time, byte, uint64)
@@ -895,12 +885,6 @@ func FormatSQL(sql string) stringutil.StringerFunc {
 		return QueryReplacer.Replace(sql)
 	}
 }
-
-var (
-	sessionExecuteRunDurationInternal = metrics.SessionExecuteRunDuration.WithLabelValues(metrics.LblInternal)
-	sessionExecuteRunDurationGeneral  = metrics.SessionExecuteRunDuration.WithLabelValues(metrics.LblGeneral)
-	totalTiFlashQuerySuccCounter      = metrics.TiFlashQueryTotalCounter.WithLabelValues("", metrics.LblOK)
-)
 
 // FinishExecuteStmt is used to record some information after `ExecStmt` execution finished:
 // 1. record slow log if needed.

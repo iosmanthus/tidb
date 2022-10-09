@@ -54,11 +54,6 @@ var (
 )
 
 var (
-	coprCacheCounterHit  = metrics.DistSQLCoprCacheCounter.WithLabelValues("hit")
-	coprCacheCounterMiss = metrics.DistSQLCoprCacheCounter.WithLabelValues("miss")
-)
-
-var (
 	_ SelectResult = (*selectResult)(nil)
 	_ SelectResult = (*serialSelectResults)(nil)
 )

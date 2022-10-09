@@ -14,9 +14,52 @@
 
 package metrics
 
+import "github.com/prometheus/client_golang/prometheus"
+
+const (
+	TagTenantId  = "tenant_id"
+	TagProjectId = "project_id"
+	TagClusterId = "cluster_id"
+)
+
 // Identify serverless cluster. Should be setup before register metrics.
 var (
-	ServerlessTenantID  string
-	ServerlessProjectID string
-	ServerlessClusterID string
+	ServerlessLabels prometheus.Labels
 )
+
+func SetServerlessLabels(ServerlessTenantID, ServerlessProjectID, ServerlessClusterID string) {
+	ServerlessLabels = make(prometheus.Labels)
+	ServerlessLabels[TagTenantId] = ServerlessTenantID
+	ServerlessLabels[TagProjectId] = ServerlessProjectID
+	ServerlessLabels[TagClusterId] = ServerlessClusterID
+}
+
+func NewCounter(opts prometheus.CounterOpts) prometheus.Counter {
+	opts.ConstLabels = ServerlessLabels
+	return prometheus.NewCounter(opts)
+}
+
+func NewCounterVec(opts prometheus.CounterOpts, labelNames []string) *prometheus.CounterVec {
+	opts.ConstLabels = ServerlessLabels
+	return prometheus.NewCounterVec(opts, labelNames)
+}
+
+func NewGauge(opts prometheus.GaugeOpts) prometheus.Gauge {
+	opts.ConstLabels = ServerlessLabels
+	return prometheus.NewGauge(opts)
+}
+
+func NewGaugeVec(opts prometheus.GaugeOpts, labelNames []string) *prometheus.GaugeVec {
+	opts.ConstLabels = ServerlessLabels
+	return prometheus.NewGaugeVec(opts, labelNames)
+}
+
+func NewHistogram(opts prometheus.HistogramOpts) prometheus.Histogram {
+	opts.ConstLabels = ServerlessLabels
+	return prometheus.NewHistogram(opts)
+}
+
+func NewHistogramVec(opts prometheus.HistogramOpts, labelNames []string) *prometheus.HistogramVec {
+	opts.ConstLabels = ServerlessLabels
+	return prometheus.NewHistogramVec(opts, labelNames)
+}

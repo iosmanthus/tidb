@@ -54,9 +54,6 @@ import (
 	"go.uber.org/zap"
 )
 
-var planCacheCounter = metrics.PlanCacheCounter.WithLabelValues("prepare")
-var planCacheMissCounter = metrics.PlanCacheMissCounter.WithLabelValues("cache_miss")
-
 // ShowDDL is for showing DDL information.
 type ShowDDL struct {
 	baseSchemaProducer
@@ -940,7 +937,8 @@ type Simple struct {
 }
 
 // PhysicalSimpleWrapper is a wrapper of `Simple` to implement physical plan interface.
-//   Used for simple statements executing in coprocessor.
+//
+//	Used for simple statements executing in coprocessor.
 type PhysicalSimpleWrapper struct {
 	basePhysicalPlan
 	Inner Simple

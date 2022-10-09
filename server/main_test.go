@@ -45,7 +45,7 @@ func TestMain(m *testing.M) {
 
 	tikv.EnableFailpoints()
 
-	metrics.RegisterMetrics()
+	metrics.InitRegisterMetrics()
 
 	// sanity check: the global config should not be changed by other pkg init function.
 	// see also https://github.com/pingcap/tidb/issues/22162

@@ -175,6 +175,7 @@ func (cfg *BackupConfig) ParseFromFlags(flags *pflag.FlagSet) error {
 	}
 
 	cfg.KeyspaceName, err = flags.GetString(flagKeyspaceName)
+	InitMetrics(cfg.PD, cfg.KeyspaceName)
 
 	return errors.Trace(err)
 }

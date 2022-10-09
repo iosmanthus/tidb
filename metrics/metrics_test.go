@@ -29,7 +29,7 @@ func TestMetrics(_ *testing.T) {
 
 func TestRegisterMetrics(_ *testing.T) {
 	// Make sure it doesn't panic.
-	RegisterMetrics()
+	InitRegisterMetrics()
 }
 
 func TestRetLabel(t *testing.T) {

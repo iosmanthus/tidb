@@ -27,7 +27,47 @@ var (
 
 // Metrics
 var (
-	PacketIOCounter = prometheus.NewCounterVec(
+	PacketIOCounter        *prometheus.CounterVec
+	QueryDurationHistogram *prometheus.HistogramVec
+	QueryTotalCounter      *prometheus.CounterVec
+	ConnGauge              prometheus.Gauge
+	DisconnectionCounter   *prometheus.CounterVec
+	PreparedStmtGauge      prometheus.Gauge
+	ExecuteErrorCounter    *prometheus.CounterVec
+	CriticalErrorCounter   prometheus.Counter
+
+	EventStart        = "start"
+	EventGracefulDown = "graceful_shutdown"
+	// Eventkill occurs when the server.Kill() function is called.
+	EventKill  = "kill"
+	EventClose = "close"
+
+	ServerEventCounter              *prometheus.CounterVec
+	TimeJumpBackCounter             prometheus.Counter
+	KeepAliveCounter                prometheus.Counter
+	PlanCacheCounter                *prometheus.CounterVec
+	PlanCacheMissCounter            *prometheus.CounterVec
+	ReadFromTableCacheCounter       prometheus.Counter
+	HandShakeErrorCounter           prometheus.Counter
+	GetTokenDurationHistogram       prometheus.Histogram
+	TotalQueryProcHistogram         *prometheus.HistogramVec
+	TotalCopProcHistogram           *prometheus.HistogramVec
+	TotalCopWaitHistogram           *prometheus.HistogramVec
+	MaxProcs                        prometheus.Gauge
+	GOGC                            prometheus.Gauge
+	ConnIdleDurationHistogram       *prometheus.HistogramVec
+	ServerInfo                      *prometheus.GaugeVec
+	TokenGauge                      prometheus.Gauge
+	ConfigStatus                    *prometheus.GaugeVec
+	TiFlashQueryTotalCounter        *prometheus.CounterVec
+	PDAPIExecutionHistogram         *prometheus.HistogramVec
+	PDAPIRequestCounter             *prometheus.CounterVec
+	CPUProfileCounter               prometheus.Counter
+	LoadTableCacheDurationHistogram prometheus.Histogram
+)
+
+func DefineServerMetrics() {
+	PacketIOCounter = NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -35,7 +75,7 @@ var (
 			Help:      "Counters of packet IO bytes.",
 		}, []string{LblType})
 
-	QueryDurationHistogram = prometheus.NewHistogramVec(
+	QueryDurationHistogram = NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -44,7 +84,7 @@ var (
 			Buckets:   prometheus.ExponentialBuckets(0.0005, 2, 29), // 0.5ms ~ 1.5days
 		}, []string{LblSQLType})
 
-	QueryTotalCounter = prometheus.NewCounterVec(
+	QueryTotalCounter = NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -52,7 +92,7 @@ var (
 			Help:      "Counter of queries.",
 		}, []string{LblType, LblResult})
 
-	ConnGauge = prometheus.NewGauge(
+	ConnGauge = NewGauge(
 		prometheus.GaugeOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -60,7 +100,7 @@ var (
 			Help:      "Number of connections.",
 		})
 
-	DisconnectionCounter = prometheus.NewCounterVec(
+	DisconnectionCounter = NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -68,14 +108,14 @@ var (
 			Help:      "Counter of connections disconnected.",
 		}, []string{LblResult})
 
-	PreparedStmtGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+	PreparedStmtGauge = NewGauge(prometheus.GaugeOpts{
 		Namespace: "tidb",
 		Subsystem: "server",
 		Name:      "prepared_stmts",
 		Help:      "number of prepared statements.",
 	})
 
-	ExecuteErrorCounter = prometheus.NewCounterVec(
+	ExecuteErrorCounter = NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -83,7 +123,7 @@ var (
 			Help:      "Counter of execute errors.",
 		}, []string{LblType})
 
-	CriticalErrorCounter = prometheus.NewCounter(
+	CriticalErrorCounter = NewCounter(
 		prometheus.CounterOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -91,12 +131,7 @@ var (
 			Help:      "Counter of critical errors.",
 		})
 
-	EventStart        = "start"
-	EventGracefulDown = "graceful_shutdown"
-	// Eventkill occurs when the server.Kill() function is called.
-	EventKill          = "kill"
-	EventClose         = "close"
-	ServerEventCounter = prometheus.NewCounterVec(
+	ServerEventCounter = NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -104,7 +139,7 @@ var (
 			Help:      "Counter of tidb-server event.",
 		}, []string{LblType})
 
-	TimeJumpBackCounter = prometheus.NewCounter(
+	TimeJumpBackCounter = NewCounter(
 		prometheus.CounterOpts{
 			Namespace: "tidb",
 			Subsystem: "monitor",
@@ -112,7 +147,7 @@ var (
 			Help:      "Counter of system time jumps backward.",
 		})
 
-	KeepAliveCounter = prometheus.NewCounter(
+	KeepAliveCounter = NewCounter(
 		prometheus.CounterOpts{
 			Namespace: "tidb",
 			Subsystem: "monitor",
@@ -120,7 +155,7 @@ var (
 			Help:      "Counter of TiDB keep alive.",
 		})
 
-	PlanCacheCounter = prometheus.NewCounterVec(
+	PlanCacheCounter = NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -128,7 +163,7 @@ var (
 			Help:      "Counter of query using plan cache.",
 		}, []string{LblType})
 
-	PlanCacheMissCounter = prometheus.NewCounterVec(
+	PlanCacheMissCounter = NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -136,7 +171,7 @@ var (
 			Help:      "Counter of plan cache miss.",
 		}, []string{LblType})
 
-	ReadFromTableCacheCounter = prometheus.NewCounter(
+	ReadFromTableCacheCounter = NewCounter(
 		prometheus.CounterOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -145,7 +180,7 @@ var (
 		},
 	)
 
-	HandShakeErrorCounter = prometheus.NewCounter(
+	HandShakeErrorCounter = NewCounter(
 		prometheus.CounterOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -154,7 +189,7 @@ var (
 		},
 	)
 
-	GetTokenDurationHistogram = prometheus.NewHistogram(
+	GetTokenDurationHistogram = NewHistogram(
 		prometheus.HistogramOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -163,7 +198,7 @@ var (
 			Buckets:   prometheus.ExponentialBuckets(1, 2, 30), // 1us ~ 528s
 		})
 
-	TotalQueryProcHistogram = prometheus.NewHistogramVec(
+	TotalQueryProcHistogram = NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -171,7 +206,7 @@ var (
 			Help:      "Bucketed histogram of processing time (s) of of slow queries.",
 			Buckets:   prometheus.ExponentialBuckets(0.001, 2, 28), // 1ms ~ 1.5days
 		}, []string{LblSQLType})
-	TotalCopProcHistogram = prometheus.NewHistogramVec(
+	TotalCopProcHistogram = NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -179,7 +214,7 @@ var (
 			Help:      "Bucketed histogram of all cop processing time (s) of of slow queries.",
 			Buckets:   prometheus.ExponentialBuckets(0.001, 2, 28), // 1ms ~ 1.5days
 		}, []string{LblSQLType})
-	TotalCopWaitHistogram = prometheus.NewHistogramVec(
+	TotalCopWaitHistogram = NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -188,7 +223,7 @@ var (
 			Buckets:   prometheus.ExponentialBuckets(0.001, 2, 28), // 1ms ~ 1.5days
 		}, []string{LblSQLType})
 
-	MaxProcs = prometheus.NewGauge(
+	MaxProcs = NewGauge(
 		prometheus.GaugeOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -196,7 +231,7 @@ var (
 			Help:      "The value of GOMAXPROCS.",
 		})
 
-	GOGC = prometheus.NewGauge(
+	GOGC = NewGauge(
 		prometheus.GaugeOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -204,7 +239,7 @@ var (
 			Help:      "The value of GOGC",
 		})
 
-	ConnIdleDurationHistogram = prometheus.NewHistogramVec(
+	ConnIdleDurationHistogram = NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -213,7 +248,7 @@ var (
 			Buckets:   prometheus.ExponentialBuckets(0.0005, 2, 29), // 0.5ms ~ 1.5days
 		}, []string{LblInTxn})
 
-	ServerInfo = prometheus.NewGaugeVec(
+	ServerInfo = NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -221,7 +256,7 @@ var (
 			Help:      "Indicate the tidb server info, and the value is the start timestamp (s).",
 		}, []string{LblVersion, LblHash})
 
-	TokenGauge = prometheus.NewGauge(
+	TokenGauge = NewGauge(
 		prometheus.GaugeOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -230,7 +265,7 @@ var (
 		},
 	)
 
-	ConfigStatus = prometheus.NewGaugeVec(
+	ConfigStatus = NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: "tidb",
 			Subsystem: "config",
@@ -238,7 +273,7 @@ var (
 			Help:      "Status of the TiDB server configurations.",
 		}, []string{LblType})
 
-	TiFlashQueryTotalCounter = prometheus.NewCounterVec(
+	TiFlashQueryTotalCounter = NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -246,7 +281,7 @@ var (
 			Help:      "Counter of TiFlash queries.",
 		}, []string{LblType, LblResult})
 
-	PDAPIExecutionHistogram = prometheus.NewHistogramVec(
+	PDAPIExecutionHistogram = NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -255,7 +290,7 @@ var (
 			Buckets:   prometheus.ExponentialBuckets(0.001, 2, 20), // 1ms ~ 524s
 		}, []string{LblType})
 
-	PDAPIRequestCounter = prometheus.NewCounterVec(
+	PDAPIRequestCounter = NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -263,7 +298,7 @@ var (
 			Help:      "Counter of the pd http api requests",
 		}, []string{LblType, LblResult})
 
-	CPUProfileCounter = prometheus.NewCounter(
+	CPUProfileCounter = NewCounter(
 		prometheus.CounterOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -271,7 +306,7 @@ var (
 			Help:      "Counter of cpu profiling",
 		})
 
-	LoadTableCacheDurationHistogram = prometheus.NewHistogram(
+	LoadTableCacheDurationHistogram = NewHistogram(
 		prometheus.HistogramOpts{
 			Namespace: "tidb",
 			Subsystem: "server",
@@ -279,7 +314,7 @@ var (
 			Help:      "Duration (us) for loading table cache.",
 			Buckets:   prometheus.ExponentialBuckets(1, 2, 30), // 1us ~ 528s
 		})
-)
+}
 
 // ExecuteErrorToLabel converts an execute error to label.
 func ExecuteErrorToLabel(err error) string {
