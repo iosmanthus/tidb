@@ -75,7 +75,7 @@ endif
 # if REGISTER_METRICS_INIT is false means it is tidb-server, it will not register metrics when run metrics.go func init().
 # if REGISTER_METRICS_INIT is explicitly set.
 ifneq "$(REGISTER_METRICS_INIT)" ""
-    LDFLAGS += -X "github.com/pingcap/tidb/metrics/metrics.EnvRegisterMetricsAtInit=$(REGISTER_METRICS_INIT)"
+    LDFLAGS += -X "github.com/pingcap/tidb/metrics.EnvRegisterMetricsAtInit=$(REGISTER_METRICS_INIT)"
 endif
 
 

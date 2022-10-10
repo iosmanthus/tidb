@@ -15,7 +15,6 @@
 package metrics
 
 import (
-	"os"
 	"strconv"
 	"sync"
 
@@ -27,11 +26,8 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	EnvRegisterMetricsAtInit = "REGISTER_METRICS_INIT"
-)
-
 var (
+	EnvRegisterMetricsAtInit = "true"
 	// PanicCounter measures the count of panics.
 	PanicCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -95,16 +91,9 @@ func RetLabel(err error) string {
 }
 
 func getEnvIsMetricsRegisterAtInit() bool {
-	var doMustRegister bool
-	var err error
-	envMetricsTest := os.Getenv(EnvRegisterMetricsAtInit)
-	if envMetricsTest != "" {
-		doMustRegister, err = strconv.ParseBool(envMetricsTest)
-		if err != nil {
-			log.Panic("getEnvIsMetricsRegisterAtInit error.", zap.String("Getenv", envMetricsTest), zap.Error(err))
-		}
-	} else {
-		doMustRegister = true
+	doMustRegister, err := strconv.ParseBool(EnvRegisterMetricsAtInit)
+	if err != nil {
+		log.Panic("getEnvIsMetricsRegisterAtInit strconv.ParseBool error.", zap.String("EnvRegisterMetricsAtInit", EnvRegisterMetricsAtInit), zap.Error(err))
 	}
 	log.Info("getEnvIsMetricsRegisterAtInit", zap.Bool("doMustRegister", doMustRegister))
 	return doMustRegister
