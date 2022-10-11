@@ -102,11 +102,11 @@ func getEnvIsMetricsRegisterAtInit() bool {
 // RegisterCollector will register metrics collector in prometheus.
 func RegisterCollector() {
 	// use new go collector
-	//if !InitializedCollector {
-	prometheus.DefaultRegisterer.Unregister(prometheus.NewGoCollector())
-	prometheus.MustRegister(collectors.NewGoCollector(collectors.WithGoCollections(collectors.GoRuntimeMetricsCollection | collectors.GoRuntimeMemStatsCollection)))
-	//	InitializedCollector = true
-	//}
+	if !InitializedCollector {
+		prometheus.DefaultRegisterer.Unregister(prometheus.NewGoCollector())
+		prometheus.MustRegister(collectors.NewGoCollector(collectors.WithGoCollections(collectors.GoRuntimeMetricsCollection | collectors.GoRuntimeMemStatsCollection)))
+		InitializedCollector = true
+	}
 }
 
 // InitRegisterMetrics registers the metrics which are ONLY used in TiDB server.
