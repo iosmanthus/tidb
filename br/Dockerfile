@@ -30,6 +30,9 @@ RUN if [ -n "$GITHUB_TOKEN" ]; then git config --global url."https://${GITHUB_TO
 
 ENV GOPRIVATE=github.com/tidbcloud
 
+# Overwrite metrics.EnvRegisterMetricsAtInit when we build tidb-server and br cmd
+ENV REGISTER_METRICS_INIT=false
+
 RUN GO111MODULE=on go mod download
 
 # Build real binaries
