@@ -28,6 +28,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pingcap/tidb/keyspace"
+
 	"github.com/pingcap/errors"
 	"github.com/pingcap/failpoint"
 	"github.com/pingcap/kvproto/pkg/errorpb"
@@ -40,7 +42,6 @@ import (
 	"github.com/pingcap/tidb/ddl/label"
 	"github.com/pingcap/tidb/ddl/placement"
 	"github.com/pingcap/tidb/ddl/util"
-	"github.com/pingcap/tidb/domain"
 	"github.com/pingcap/tidb/domain/infosync"
 	"github.com/pingcap/tidb/kv"
 	"github.com/pingcap/tidb/metrics"
@@ -315,7 +316,7 @@ func (w *GCWorker) leaderTick(ctx context.Context) error {
 
 	// If there's setting keyspace-name, then skipped GC worker logic.
 	// It need a group of special tidb nodes to execute GC worker logic.
-	if domain.IsKvStorageKeyspaceSet(w.store) {
+	if keyspace.IsKvStorageKeyspaceSet(w.store) {
 		logutil.Logger(ctx).Info("[gc worker] there's set keyspace, skipped. ")
 		return nil
 	}

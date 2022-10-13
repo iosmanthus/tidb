@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pingcap/tidb/keyspace"
+
 	"github.com/pingcap/tidb/config"
 	"github.com/pingcap/tidb/ddl"
 	"github.com/pingcap/tidb/domain"
@@ -52,7 +54,7 @@ func TestMain(m *testing.M) {
 		conf.Experimental.AllowsExpressionIndex = true
 	})
 
-	_, err := infosync.GlobalInfoSyncerInit(context.Background(), "t", func() uint64 { return 1 }, nil, true)
+	_, err := infosync.GlobalInfoSyncerInit(context.Background(), "t", func() uint64 { return 1 }, nil, true, keyspace.CodecV1)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "ddl: infosync.GlobalInfoSyncerInit: %v\n", err)
 		os.Exit(1)

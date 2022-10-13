@@ -33,6 +33,7 @@ import (
 	"github.com/pingcap/tidb/meta/autoid"
 	"github.com/pingcap/tidb/parser/model"
 	"github.com/pingcap/tidb/parser/mysql" //nolint: goimports
+
 	// Import tidb/planner/core to initialize expression.RewriteAstExpr
 	_ "github.com/pingcap/tidb/planner/core"
 	"github.com/pingcap/tidb/sessionctx/variable"

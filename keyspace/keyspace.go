@@ -1,9 +1,11 @@
-package domain
+package keyspace
 
 import (
 	"encoding/binary"
 	"fmt"
 	"os"
+
+	"github.com/tikv/client-go/v2/tikv"
 
 	"github.com/pingcap/tidb/config"
 	"github.com/pingcap/tidb/kv"
@@ -16,6 +18,10 @@ const (
 
 	// tidbKeyspaceEtcdPathPrefix is the keyspace prefix for etcd namespace
 	tidbKeyspaceEtcdPathPrefix = "/keyspaces/tidb/"
+)
+
+var (
+	CodecV1 = tikv.NewCodecV1(tikv.ModeTxn)
 )
 
 func GetKeyspaceNameBySettings() (keyspaceName string) {
@@ -40,19 +46,22 @@ func GetKeyspacePathPrefix(keyspaceId uint32) string {
 	return path
 }
 
-// KeyspaceIdBytesToUint32 is used to convert byte array to uint32
-func KeyspaceIdBytesToUint32(b []byte) uint32 {
-	c := make([]byte, 4)
-	copy(c[1:4], b[0:3])
-	return binary.BigEndian.Uint32(c)
-}
-
-// IsKvStorageKeyspaceSet return true if get keyspace meta successed
+// IsKvStorageKeyspaceSet return true if you get keyspace meta successes
 func IsKvStorageKeyspaceSet(store kv.Storage) bool {
 	return store.GetCodec().GetKeyspace() != nil
 }
 
-// GetKeyspaceID is used to get keyspace id bytes from keyspace prefix
-func GetKeyspaceID(b []byte) []byte {
-	return b[1:]
+// toUint32 is used to convert byte array to uint32
+func toUint32(b []byte) uint32 {
+	c := make([]byte, 4)
+	copy(c[1:4], b)
+	return binary.BigEndian.Uint32(c)
+}
+
+// GetID is used to get keyspace id bytes from keyspace prefix
+func GetID(b []byte) uint32 {
+	if len(b) < 4 {
+		return 0
+	}
+	return toUint32(b[1:4])
 }

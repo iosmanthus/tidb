@@ -26,6 +26,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pingcap/tidb/keyspace"
+
 	"github.com/coreos/go-semver/semver"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
@@ -258,7 +260,7 @@ func main() {
 
 	setupMetrics()
 
-	keyspaceName := domain.GetKeyspaceNameBySettings()
+	keyspaceName := keyspace.GetKeyspaceNameBySettings()
 	storage, dom, err := createStoreAndDomain(keyspaceName)
 	mainErrHandler(err)
 	svr := createServer(storage, dom)

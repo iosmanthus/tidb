@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingcap/tidb/keyspace"
+
 	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/failpoint"
@@ -24,7 +26,6 @@ import (
 	"github.com/pingcap/tidb/br/pkg/utils"
 	"github.com/pingcap/tidb/br/pkg/version"
 	"github.com/pingcap/tidb/config"
-	"github.com/pingcap/tidb/domain"
 	"github.com/pingcap/tidb/kv"
 	"github.com/pingcap/tidb/util/mathutil"
 	"github.com/spf13/cobra"
@@ -654,7 +655,7 @@ func RunRestore(c context.Context, g glue.Glue, cmdName string, cfg *RestoreConf
 	// we are not allowed to decrease timestamp.
 	// It's also skipped if a specific keyspace to restore is given, to minimize the impact
 	// of other keyspaces.
-	if !client.IsIncremental() && domain.IsKeyspaceNameEmpty(cfg.KeyspaceName) {
+	if !client.IsIncremental() && keyspace.IsKeyspaceNameEmpty(cfg.KeyspaceName) {
 		if err = client.ResetTS(ctx, cfg.PD); err != nil {
 			log.Error("reset pd TS failed", zap.Error(err))
 			return errors.Trace(err)

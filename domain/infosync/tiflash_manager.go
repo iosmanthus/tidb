@@ -31,15 +31,20 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/pingcap/errors"
+	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/pingcap/tidb/ddl/placement"
+	"github.com/pingcap/tidb/keyspace"
 	"github.com/pingcap/tidb/store/helper"
 	"github.com/pingcap/tidb/tablecodec"
 	"github.com/pingcap/tidb/util/codec"
 	"github.com/pingcap/tidb/util/logutil"
 	"github.com/pingcap/tidb/util/pdapi"
+	"github.com/tikv/client-go/v2/tikv"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.uber.org/zap"
 )
+
+const keyspaceIDLabel = "keyspace-id"
 
 // TiFlashPlacementManager manages placement settings for TiFlash.
 type TiFlashPlacementManager interface {
@@ -62,6 +67,7 @@ type TiFlashPlacementManager interface {
 // TiFlashPDPlacementManager manages placement with pd for TiFlash.
 type TiFlashPDPlacementManager struct {
 	etcdCli *clientv3.Client
+	codec   tikv.Codec
 }
 
 // Close is called to close TiFlashPDPlacementManager.
@@ -69,12 +75,54 @@ func (m *TiFlashPDPlacementManager) Close(ctx context.Context) {
 
 }
 
+func EncodePlacementRule(c tikv.Codec, rule *placement.TiFlashRule) error {
+	if c.GetAPIVersion() == kvrpcpb.APIVersion_V1 || (rule.StartKeyHex == "" && rule.EndKeyHex == "") {
+		return nil
+	}
+
+	startKey, err := hex.DecodeString(rule.StartKeyHex)
+	if err != nil {
+		return err
+	}
+
+	endKey, err := hex.DecodeString(rule.EndKeyHex)
+	if err != nil {
+		return err
+	}
+
+	_, startKey, err = codec.DecodeBytes(startKey, nil)
+	if err != nil {
+		return err
+	}
+
+	_, endKey, err = codec.DecodeBytes(endKey, nil)
+	if err != nil {
+		return err
+	}
+
+	startKey, endKey = c.EncodeRegionRange(startKey, endKey)
+	rule.StartKeyHex = hex.EncodeToString(startKey)
+	rule.EndKeyHex = hex.EncodeToString(endKey)
+	err = rule.Constraints.Add(placement.Constraint{
+		Key:    keyspaceIDLabel,
+		Op:     placement.In,
+		Values: []string{fmt.Sprintf("%d", keyspace.GetID(c.GetKeyspace()))},
+	})
+
+	return err
+}
+
 // SetPlacementRule is a helper function to set placement rule.
 func (m *TiFlashPDPlacementManager) SetPlacementRule(ctx context.Context, rule placement.TiFlashRule) error {
 	if rule.Count == 0 {
 		return m.DeletePlacementRule(ctx, rule.GroupID, rule.ID)
 	}
+	err := EncodePlacementRule(m.codec, &rule)
+	if err != nil {
+		return err
+	}
 	j, _ := json.Marshal(rule)
+	logutil.BgLogger().Info("SetPlacementRule", zap.String("rule", string(j)))
 	buf := bytes.NewBuffer(j)
 	res, err := doRequest(ctx, "SetPlacementRule", m.etcdCli.Endpoints(), path.Join(pdapi.Config, "rule"), "POST", buf)
 	if err != nil {
@@ -121,8 +169,7 @@ func (m *TiFlashPDPlacementManager) GetGroupRules(ctx context.Context, group str
 func (m *TiFlashPDPlacementManager) PostAccelerateSchedule(ctx context.Context, tableID int64) error {
 	startKey := tablecodec.GenTableRecordPrefix(tableID)
 	endKey := tablecodec.EncodeTablePrefix(tableID + 1)
-	startKey = codec.EncodeBytes([]byte{}, startKey)
-	endKey = codec.EncodeBytes([]byte{}, endKey)
+	startKey, endKey = m.codec.EncodeRegionRange(startKey, endKey)
 
 	input := map[string]string{
 		"start_key": hex.EncodeToString(startKey),
@@ -147,9 +194,9 @@ func (m *TiFlashPDPlacementManager) PostAccelerateSchedule(ctx context.Context, 
 func (m *TiFlashPDPlacementManager) GetPDRegionRecordStats(ctx context.Context, tableID int64, stats *helper.PDRegionStats) error {
 	startKey := tablecodec.GenTableRecordPrefix(tableID)
 	endKey := tablecodec.EncodeTablePrefix(tableID + 1)
-	startKey = codec.EncodeBytes([]byte{}, startKey)
-	endKey = codec.EncodeBytes([]byte{}, endKey)
+	startKey, endKey = m.codec.EncodeRegionRange(startKey, endKey)
 
+	logutil.BgLogger().Info("GetPDRegionRecordStats", zap.String("startKey", hex.EncodeToString(startKey)), zap.String("endKey", hex.EncodeToString(endKey)))
 	p := fmt.Sprintf("/pd/api/v1/stats/region?start_key=%s&end_key=%s",
 		url.QueryEscape(string(startKey)),
 		url.QueryEscape(string(endKey)))
@@ -216,6 +263,7 @@ func MakeNewRule(ID int64, Count uint64, LocationLabels []string) *placement.TiF
 	ruleID := fmt.Sprintf("table-%v-r", ID)
 	startKey := tablecodec.GenTableRecordPrefix(ID)
 	endKey := tablecodec.EncodeTablePrefix(ID + 1)
+
 	startKey = codec.EncodeBytes([]byte{}, startKey)
 	endKey = codec.EncodeBytes([]byte{}, endKey)
 

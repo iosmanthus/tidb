@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package domain
+package keyspace
 
 import (
 	"encoding/binary"
@@ -81,13 +81,9 @@ func (k *keyspaceSuite) TestNoKeyspaceNameSet() {
 }
 
 func (k *keyspaceSuite) TestID2Uint32() {
-
 	expectId := uint32(1)
 	expectBytes := make([]byte, 4)
 	binary.BigEndian.PutUint32(expectBytes, expectId)
 
-	testBytes := GetKeyspaceID(expectBytes)
-	testId := KeyspaceIdBytesToUint32(testBytes)
-	k.Equal(expectId, testId)
-
+	k.Equal(expectId, GetID(expectBytes))
 }

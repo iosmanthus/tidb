@@ -11,6 +11,8 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/pingcap/tidb/keyspace"
+
 	"github.com/docker/go-units"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
@@ -225,7 +227,7 @@ func NewMgr(
 	}
 
 	// Disable GC because TiDB enables GC already.
-	path := fmt.Sprintf("tikv://%s?disableGC=true&keyspaceName=%s", pdAddrs, domain.GetKeyspaceNameBySettings())
+	path := fmt.Sprintf("tikv://%s?disableGC=true&keyspaceName=%s", pdAddrs, keyspace.GetKeyspaceNameBySettings())
 	storage, err := g.Open(path, securityOption)
 	if err != nil {
 		return nil, errors.Trace(err)

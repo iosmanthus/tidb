@@ -9,9 +9,10 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/tikv/client-go/v2/tikv"
 	"sync"
 	"time"
+
+	"github.com/tikv/client-go/v2/tikv"
 
 	"github.com/docker/go-units"
 	"github.com/gogo/protobuf/proto"

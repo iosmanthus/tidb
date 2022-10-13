@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/pingcap/kvproto/pkg/pdpb"
 	"io"
 	"net/http"
 	"os"
@@ -29,6 +28,9 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/pingcap/kvproto/pkg/pdpb"
+	"github.com/tikv/client-go/v2/tikv"
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/pingcap/errors"
@@ -181,7 +183,7 @@ func setGlobalInfoSyncer(is *InfoSyncer) {
 }
 
 // GlobalInfoSyncerInit return a new InfoSyncer. It is exported for testing.
-func GlobalInfoSyncerInit(ctx context.Context, id string, serverIDGetter func() uint64, etcdCli *clientv3.Client, skipRegisterToDashBoard bool) (*InfoSyncer, error) {
+func GlobalInfoSyncerInit(ctx context.Context, id string, serverIDGetter func() uint64, etcdCli *clientv3.Client, skipRegisterToDashBoard bool, codec tikv.Codec) (*InfoSyncer, error) {
 	is := &InfoSyncer{
 		etcdCli:        etcdCli,
 		info:           getServerInfo(id, serverIDGetter),
@@ -194,7 +196,7 @@ func GlobalInfoSyncerInit(ctx context.Context, id string, serverIDGetter func() 
 	}
 	is.labelRuleManager = initLabelRuleManager(etcdCli)
 	is.placementManager = initPlacementManager(etcdCli)
-	is.tiflashPlacementManager = initTiFlashPlacementManager(etcdCli)
+	is.tiflashPlacementManager = initTiFlashPlacementManager(etcdCli, codec)
 	setGlobalInfoSyncer(is)
 	return is, nil
 }
@@ -239,13 +241,13 @@ func initPlacementManager(etcdCli *clientv3.Client) PlacementManager {
 	return &PDPlacementManager{etcdCli: etcdCli}
 }
 
-func initTiFlashPlacementManager(etcdCli *clientv3.Client) TiFlashPlacementManager {
+func initTiFlashPlacementManager(etcdCli *clientv3.Client, codec tikv.Codec) TiFlashPlacementManager {
 	if etcdCli == nil {
 		m := mockTiFlashPlacementManager{}
 		return &m
 	}
 	logutil.BgLogger().Warn("init TiFlashPlacementManager", zap.Strings("pd addrs", etcdCli.Endpoints()))
-	return &TiFlashPDPlacementManager{etcdCli: etcdCli}
+	return &TiFlashPDPlacementManager{etcdCli: etcdCli, codec: codec}
 }
 
 // GetMockTiFlash can only be used in tests to get MockTiFlash

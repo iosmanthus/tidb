@@ -7,14 +7,15 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/hex"
-	"github.com/pingcap/tidb/config"
-	"github.com/pingcap/tidb/metrics"
-	uni_metrics "github.com/pingcap/tidb/store/mockstore/unistore/metrics"
 	"net/url"
 	"os"
 	"path"
 	"strings"
 	"time"
+
+	"github.com/pingcap/tidb/config"
+	"github.com/pingcap/tidb/metrics"
+	uni_metrics "github.com/pingcap/tidb/store/mockstore/unistore/metrics"
 
 	gcs "cloud.google.com/go/storage"
 	"github.com/docker/go-units"

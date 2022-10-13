@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingcap/tidb/keyspace"
+
 	"github.com/docker/go-units"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
@@ -27,7 +29,6 @@ import (
 	"github.com/pingcap/tidb/br/pkg/summary"
 	"github.com/pingcap/tidb/br/pkg/utils"
 	"github.com/pingcap/tidb/config"
-	"github.com/pingcap/tidb/domain"
 	"github.com/pingcap/tidb/parser/mysql"
 	"github.com/pingcap/tidb/sessionctx/stmtctx"
 	"github.com/pingcap/tidb/statistics/handle"
@@ -332,7 +333,7 @@ func RunBackup(c context.Context, g glue.Glue, cmdName string, cfg *BackupConfig
 
 	isIncrementalBackup := cfg.LastBackupTS > 0
 
-	if cfg.RemoveSchedulers && !domain.IsKeyspaceNameEmpty(cfg.KeyspaceName) {
+	if cfg.RemoveSchedulers && !keyspace.IsKeyspaceNameEmpty(cfg.KeyspaceName) {
 		log.Info("skip removing PD schedulers while backing up specific keyspace's data")
 	} else if cfg.RemoveSchedulers {
 		log.Debug("removing some PD schedulers")

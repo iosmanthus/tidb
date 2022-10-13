@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pingcap/tidb/keyspace"
+
 	"github.com/pingcap/failpoint"
 	"github.com/pingcap/tidb/ddl/util"
 	"github.com/pingcap/tidb/domain/infosync"
@@ -275,7 +277,7 @@ func TestFlashbackTable(t *testing.T) {
 	store, dom, clean := testkit.CreateMockStoreAndDomain(t)
 	defer clean()
 
-	_, err := infosync.GlobalInfoSyncerInit(context.Background(), dom.DDL().GetID(), dom.ServerID, dom.GetEtcdClient(), true)
+	_, err := infosync.GlobalInfoSyncerInit(context.Background(), dom.DDL().GetID(), dom.ServerID, dom.GetEtcdClient(), true, keyspace.CodecV1)
 	require.NoError(t, err)
 	tk := testkit.NewTestKit(t, store)
 	tk.MustExec("use test")
@@ -334,7 +336,7 @@ func TestDropTable(t *testing.T) {
 	store, dom, clean := testkit.CreateMockStoreAndDomain(t)
 	defer clean()
 
-	_, err := infosync.GlobalInfoSyncerInit(context.Background(), dom.DDL().GetID(), dom.ServerID, dom.GetEtcdClient(), true)
+	_, err := infosync.GlobalInfoSyncerInit(context.Background(), dom.DDL().GetID(), dom.ServerID, dom.GetEtcdClient(), true, keyspace.CodecV1)
 	require.NoError(t, err)
 	tk := testkit.NewTestKit(t, store)
 	tk.MustExec("use test")
@@ -388,7 +390,7 @@ func TestCreateWithSameName(t *testing.T) {
 	store, dom, clean := testkit.CreateMockStoreAndDomain(t)
 	defer clean()
 
-	_, err := infosync.GlobalInfoSyncerInit(context.Background(), dom.DDL().GetID(), dom.ServerID, dom.GetEtcdClient(), true)
+	_, err := infosync.GlobalInfoSyncerInit(context.Background(), dom.DDL().GetID(), dom.ServerID, dom.GetEtcdClient(), true, keyspace.CodecV1)
 	require.NoError(t, err)
 	tk := testkit.NewTestKit(t, store)
 	tk.MustExec("use test")
@@ -453,7 +455,7 @@ func TestPartition(t *testing.T) {
 	store, dom, clean := testkit.CreateMockStoreAndDomain(t)
 	defer clean()
 
-	_, err := infosync.GlobalInfoSyncerInit(context.Background(), dom.DDL().GetID(), dom.ServerID, dom.GetEtcdClient(), true)
+	_, err := infosync.GlobalInfoSyncerInit(context.Background(), dom.DDL().GetID(), dom.ServerID, dom.GetEtcdClient(), true, keyspace.CodecV1)
 	require.NoError(t, err)
 	tk := testkit.NewTestKit(t, store)
 	tk.MustExec("use test")
@@ -514,7 +516,7 @@ func TestDropSchema(t *testing.T) {
 	store, dom, clean := testkit.CreateMockStoreAndDomain(t)
 	defer clean()
 
-	_, err := infosync.GlobalInfoSyncerInit(context.Background(), dom.DDL().GetID(), dom.ServerID, dom.GetEtcdClient(), true)
+	_, err := infosync.GlobalInfoSyncerInit(context.Background(), dom.DDL().GetID(), dom.ServerID, dom.GetEtcdClient(), true, keyspace.CodecV1)
 	require.NoError(t, err)
 	tk := testkit.NewTestKit(t, store)
 	tk.MustExec("use test")
@@ -541,7 +543,7 @@ func TestDefaultKeyword(t *testing.T) {
 	store, dom, clean := testkit.CreateMockStoreAndDomain(t)
 	defer clean()
 
-	_, err := infosync.GlobalInfoSyncerInit(context.Background(), dom.DDL().GetID(), dom.ServerID, dom.GetEtcdClient(), true)
+	_, err := infosync.GlobalInfoSyncerInit(context.Background(), dom.DDL().GetID(), dom.ServerID, dom.GetEtcdClient(), true, keyspace.CodecV1)
 	require.NoError(t, err)
 	tk := testkit.NewTestKit(t, store)
 	tk.MustExec("use test")

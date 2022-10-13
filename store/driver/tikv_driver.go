@@ -24,10 +24,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pingcap/tidb/keyspace"
+
 	"github.com/pingcap/errors"
 	deadlockpb "github.com/pingcap/kvproto/pkg/deadlock"
 	"github.com/pingcap/kvproto/pkg/kvrpcpb"
-	"github.com/pingcap/tidb/domain"
 	"github.com/pingcap/tidb/kv"
 	"github.com/pingcap/tidb/store/copr"
 	derr "github.com/pingcap/tidb/store/driver/error"
@@ -163,7 +164,7 @@ func (d TiKVDriver) OpenWithOptions(path string, options ...Option) (kv.Storage,
 		pdClient *tikv.CodecPDClient
 	)
 
-	if domain.IsKeyspaceNameEmpty(keyspaceName) {
+	if keyspace.IsKeyspaceNameEmpty(keyspaceName) {
 		logutil.BgLogger().Info("using API V1.")
 		pdClient = tikv.NewCodecPDClient(tikv.ModeTxn, pdCli)
 	} else {

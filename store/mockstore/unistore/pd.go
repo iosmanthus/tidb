@@ -17,9 +17,10 @@ package unistore
 import (
 	"context"
 	"errors"
-	"github.com/pingcap/kvproto/pkg/keyspacepb"
 	"math"
 	"sync"
+
+	"github.com/pingcap/kvproto/pkg/keyspacepb"
 
 	"github.com/pingcap/kvproto/pkg/pdpb"
 	us "github.com/pingcap/tidb/store/mockstore/unistore/tikv"

@@ -16,6 +16,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pingcap/tidb/keyspace"
+
 	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/failpoint"
@@ -2520,7 +2522,7 @@ func (rc *Client) SetKeyspaceName(keyspaceName string) {
 
 // IsKeyspaceMode indicates whether BR is restoring a specific keyspace's data.
 func (rc *Client) IsKeyspaceMode() bool {
-	return !domain.IsKeyspaceNameEmpty(rc.keyspaceName)
+	return !keyspace.IsKeyspaceNameEmpty(rc.keyspaceName)
 }
 
 // MockClient create a fake client used to test.

@@ -24,6 +24,8 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/pingcap/tidb/keyspace"
+
 	"github.com/ngaut/pools"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/failpoint"
@@ -796,10 +798,10 @@ func (do *Domain) Init(ddlLease time.Duration, sysExecutorFactory func(*Domain) 
 			})
 
 			// If keyspace has been set in KvStorage
-			if IsKvStorageKeyspaceSet(do.store) {
+			if keyspace.IsKvStorageKeyspaceSet(do.store) {
 				keyspacePrefix := do.store.GetCodec().GetKeyspace()
-				keyspaceId := KeyspaceIdBytesToUint32(GetKeyspaceID(keyspacePrefix))
-				etcdPathPrefix := GetKeyspacePathPrefix(keyspaceId)
+				keyspaceId := keyspace.GetID(keyspacePrefix)
+				etcdPathPrefix := keyspace.GetKeyspacePathPrefix(keyspaceId)
 				etcd.SetEtcdCliByNamespace(cli, etcdPathPrefix)
 			}
 
@@ -863,7 +865,7 @@ func (do *Domain) Init(ddlLease time.Duration, sysExecutorFactory func(*Domain) 
 
 	// step 1: prepare the info/schema syncer which domain reload needed.
 	skipRegisterToDashboard := config.GetGlobalConfig().SkipRegisterToDashboard
-	do.info, err = infosync.GlobalInfoSyncerInit(ctx, do.ddl.GetID(), do.ServerID, do.etcdClient, skipRegisterToDashboard)
+	do.info, err = infosync.GlobalInfoSyncerInit(ctx, do.ddl.GetID(), do.ServerID, do.etcdClient, skipRegisterToDashboard, do.Store().GetCodec())
 	if err != nil {
 		return err
 	}
