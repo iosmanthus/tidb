@@ -175,7 +175,7 @@ var (
 
 	// Standby
 	standbyMode       = flagBoolean(nmStandby, false, "start tidb-server as standby")
-	activationTimeout = flag.Uint(nmActivationTimeout, 10, "max time in second allowed for tidb to activate from standby, 0 means no limit")
+	activationTimeout = flag.Uint(nmActivationTimeout, 0, "max time in second allowed for tidb to activate from standby, 0 means no limit")
 	maxIdleSeconds    = flag.Uint(nmMaxIdleSeconds, 0, "max idle seconds for a connection, 0 means no limit")
 
 	// Bootstrap SQL File

@@ -34,11 +34,7 @@ var (
 	activationTimeout uint
 )
 
-var (
-	activateCh      = make(chan struct{}, 1)
-	serverIsReadyCh = make(chan struct{})
-	startServerErr  error
-)
+var activateCh = make(chan struct{}, 1)
 
 // StandbyHandler returns a handler to query tidb pool status or activate or exit the tidb server.
 func StandbyHandler() *http.ServeMux {
@@ -75,12 +71,20 @@ func StandbyHandler() *http.ServeMux {
 		}
 
 		select {
-		case <-timeout:
+		case <-r.Context().Done(): // client closed connection.
+			go func() {
+				EndStandby(errors.New("client closed connection"))
+				os.Exit(1)
+			}()
+		case <-timeout: // reach hardlimit timeout from config.
 			logutil.BgLogger().Warn("timeout waiting for activation")
 			w.WriteHeader(http.StatusRequestTimeout)
 			w.Write([]byte("timeout waiting for activation"))
-			os.Exit(1)
-		case <-serverIsReadyCh:
+			go func() {
+				EndStandby(errors.New("timeout waiting for activation"))
+				os.Exit(1)
+			}()
+		case <-serverStartCh:
 			if startServerErr != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(startServerErr.Error()))
@@ -131,14 +135,21 @@ func StartStandby(host string, port uint, timeout uint) ActivateRequest {
 	return activateRequest
 }
 
-// EndStandby is used to notify the temp http server that the tidb server is ready.
-func EndStandby(err error) error {
-	startServerErr = err
-	close(serverIsReadyCh)
-	if server != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		return server.Shutdown(ctx)
-	}
-	return nil
+var (
+	serverStartCh  = make(chan struct{})
+	startServerErr error
+	endOnce        sync.Once
+)
+
+// EndStandby is used to notify the temp http server that the tidb server is ready or failed to init.
+func EndStandby(err error) {
+	endOnce.Do(func() {
+		startServerErr = err
+		close(serverStartCh)
+		if server != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			server.Shutdown(ctx)
+		}
+	})
 }
