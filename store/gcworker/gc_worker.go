@@ -28,8 +28,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pingcap/tidb/keyspace"
-
 	"github.com/pingcap/errors"
 	"github.com/pingcap/failpoint"
 	"github.com/pingcap/kvproto/pkg/errorpb"
@@ -311,13 +309,6 @@ func (w *GCWorker) leaderTick(ctx context.Context) error {
 	if w.gcIsRunning {
 		logutil.Logger(ctx).Info("[gc worker] there's already a gc job running, skipped",
 			zap.String("leaderTick on", w.uuid))
-		return nil
-	}
-
-	// If there's setting keyspace-name, then skipped GC worker logic.
-	// It need a group of special tidb nodes to execute GC worker logic.
-	if keyspace.IsKvStorageKeyspaceSet(w.store) {
-		logutil.Logger(ctx).Info("[gc worker] there's set keyspace, skipped. ")
 		return nil
 	}
 
