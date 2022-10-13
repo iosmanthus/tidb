@@ -15,6 +15,8 @@
 package executor
 
 import (
+	"github.com/pingcap/log"
+	"github.com/pingcap/tidb/br/pkg/task"
 	"github.com/pingcap/tidb/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -65,10 +67,12 @@ var (
 
 func init() {
 	InitMetricsVars()
+	task.RegisterExecutorMetrics(InitMetricsVars)
 }
 
 // InitMetricsVars init executor metrics counter
 func InitMetricsVars() {
+	log.Info("init executor metrics")
 	executorCounterMergeJoinExec = metrics.ExecutorCounter.WithLabelValues("MergeJoinExec")
 	executorCountHashJoinExec = metrics.ExecutorCounter.WithLabelValues("HashJoinExec")
 	executorCounterHashAggExec = metrics.ExecutorCounter.WithLabelValues("HashAggExec")

@@ -15,6 +15,7 @@
 package server
 
 import (
+	"github.com/pingcap/log"
 	"github.com/pingcap/tidb/metrics"
 	"github.com/pingcap/tidb/parser/mysql"
 	"github.com/prometheus/client_golang/prometheus"
@@ -55,6 +56,7 @@ func init() {
 
 // InitMetricsVars init server metrics counter
 func InitMetricsVars() {
+	log.Info("init server metrics")
 	queryTotalCountOk = []prometheus.Counter{
 		mysql.ComSleep:            metrics.QueryTotalCounter.WithLabelValues("Sleep", "OK"),
 		mysql.ComQuit:             metrics.QueryTotalCounter.WithLabelValues("Quit", "OK"),

@@ -45,6 +45,7 @@ func TestMain(m *testing.M) {
 
 	tikv.EnableFailpoints()
 
+	metrics.IsRegisterMetricsAtInit = false
 	metrics.InitRegisterMetrics()
 
 	// sanity check: the global config should not be changed by other pkg init function.

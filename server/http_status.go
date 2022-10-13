@@ -22,6 +22,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"github.com/pingcap/tidb/metrics"
 	"io"
 	"net"
 	"net/http"
@@ -32,6 +33,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -507,6 +509,8 @@ type status struct {
 	Connections int    `json:"connections"`
 	Version     string `json:"version"`
 	GitHash     string `json:"git_hash"`
+
+	LastStatementUnixSeconds int64 `json:"last_statement_unix_seconds"`
 }
 
 func (s *Server) handleStatus(w http.ResponseWriter, req *http.Request) {
@@ -522,6 +526,8 @@ func (s *Server) handleStatus(w http.ResponseWriter, req *http.Request) {
 		Connections: s.ConnectionCount(),
 		Version:     mysql.ServerVersion,
 		GitHash:     versioninfo.TiDBGitHash,
+
+		LastStatementUnixSeconds: atomic.LoadInt64(&metrics.LastStmtTimestamp),
 	}
 	js, err := json.Marshal(st)
 	if err != nil {

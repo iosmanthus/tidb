@@ -15,6 +15,7 @@
 package distsql
 
 import (
+	"github.com/pingcap/log"
 	"github.com/pingcap/tidb/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -30,6 +31,7 @@ func init() {
 
 // InitMetricsVars init distsql metrics counter
 func InitMetricsVars() {
+	log.Info("init distsql metrics")
 	coprCacheCounterHit = metrics.DistSQLCoprCacheCounter.WithLabelValues("hit")
 	coprCacheCounterMiss = metrics.DistSQLCoprCacheCounter.WithLabelValues("miss")
 }

@@ -15,6 +15,8 @@
 package core
 
 import (
+	"github.com/pingcap/log"
+	br_task "github.com/pingcap/tidb/br/pkg/task"
 	"github.com/pingcap/tidb/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -30,10 +32,12 @@ var (
 
 func init() {
 	InitMetricsVars()
+	br_task.RegisterPlannercoreMetrics(InitMetricsVars)
 }
 
 // InitMetricsVars init planner core metrics counter
 func InitMetricsVars() {
+	log.Info("init planner core metrics")
 	planCacheCounter = metrics.PlanCacheCounter.WithLabelValues("prepare")
 	planCacheMissCounter = metrics.PlanCacheMissCounter.WithLabelValues("cache_miss")
 	pseudoEstimationNotAvailable = metrics.PseudoEstimation.WithLabelValues("nodata")

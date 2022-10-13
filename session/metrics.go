@@ -15,6 +15,8 @@
 package session
 
 import (
+	"github.com/pingcap/log"
+	"github.com/pingcap/tidb/br/pkg/task"
 	"github.com/pingcap/tidb/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -40,10 +42,12 @@ var (
 
 func init() {
 	InitMetricsVars()
+	task.RegisterSessionMetrics(InitMetricsVars)
 }
 
 // InitMetricsVars init session metrics counter
 func InitMetricsVars() {
+	log.Info("init session metrics")
 	statementPerTransactionPessimisticOK = metrics.StatementPerTransaction.WithLabelValues(metrics.LblPessimistic, metrics.LblOK)
 	statementPerTransactionPessimisticError = metrics.StatementPerTransaction.WithLabelValues(metrics.LblPessimistic, metrics.LblError)
 	statementPerTransactionOptimisticOK = metrics.StatementPerTransaction.WithLabelValues(metrics.LblOptimistic, metrics.LblOK)

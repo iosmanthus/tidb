@@ -16,6 +16,8 @@ package executor
 
 import (
 	"context"
+	"sync/atomic"
+	"time"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/failpoint"
@@ -166,6 +168,8 @@ func CountStmtNode(stmtNode ast.StmtNode, inRestrictedSQL bool) {
 	default:
 		metrics.StmtNodeCounter.WithLabelValues(typeLabel).Inc()
 	}
+
+	atomic.StoreInt64(&metrics.LastStmtTimestamp, time.Now().Unix())
 
 	if !config.GetGlobalConfig().Status.RecordQPSbyDB {
 		return

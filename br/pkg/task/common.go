@@ -7,15 +7,12 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/hex"
+
 	"net/url"
 	"os"
 	"path"
 	"strings"
 	"time"
-
-	"github.com/pingcap/tidb/config"
-	"github.com/pingcap/tidb/metrics"
-	uni_metrics "github.com/pingcap/tidb/store/mockstore/unistore/metrics"
 
 	gcs "cloud.google.com/go/storage"
 	"github.com/docker/go-units"
@@ -30,8 +27,15 @@ import (
 	"github.com/pingcap/tidb/br/pkg/metautil"
 	"github.com/pingcap/tidb/br/pkg/storage"
 	"github.com/pingcap/tidb/br/pkg/utils"
+	"github.com/pingcap/tidb/config"
+	"github.com/pingcap/tidb/distsql"
+	"github.com/pingcap/tidb/infoschema"
+	"github.com/pingcap/tidb/metrics"
 	"github.com/pingcap/tidb/sessionctx/variable"
+	statshandler "github.com/pingcap/tidb/statistics/handle"
+	uni_metrics "github.com/pingcap/tidb/store/mockstore/unistore/metrics"
 	filter "github.com/pingcap/tidb/util/table-filter"
+	"github.com/pingcap/tidb/util/topsql/reporter"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	pd "github.com/tikv/pd/client"
@@ -95,6 +99,30 @@ const (
 
 	tidbNewCollationEnabled = "new_collation_enabled"
 )
+
+var (
+	ExecutorMetricsHandler    func()
+	PlannercoreMetricsHandler func()
+
+	SessionMetricsHandler func()
+)
+
+// RegisterExecutorMetrics is for register executor metrics
+func RegisterExecutorMetrics(f func()) {
+	ExecutorMetricsHandler = f
+}
+
+// RegisterPlannercoreMetrics is for register planner core metrics
+func RegisterPlannercoreMetrics(f func()) {
+	PlannercoreMetricsHandler = f
+}
+
+// RegisterSessionMetrics is for register session metrics
+func RegisterSessionMetrics(f func()) {
+	SessionMetricsHandler = f
+}
+
+// ---------- define metrics handler end ------------
 
 // TLSConfig is the common configuration for TLS connection.
 type TLSConfig struct {
@@ -781,6 +809,16 @@ func InitMetrics(pdAddr []string, keyspaceName string) error {
 
 	metrics.DefineMetrics()
 	metrics.RegisterMetrics()
+
+	distsql.InitMetricsVars()
+	ExecutorMetricsHandler()
+	infoschema.InitMetricsVars()
+	PlannercoreMetricsHandler()
+
+	SessionMetricsHandler()
+	statshandler.InitMetricsVars()
+	reporter.InitMetricsVars()
+
 	if config.GetGlobalConfig().Store == "unistore" {
 		uni_metrics.RegisterMetrics()
 	}

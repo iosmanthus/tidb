@@ -46,8 +46,8 @@ var (
 			Help:      "Memory Usage",
 		}, []string{LblModule, LblType})
 
-	// isRegisterMetricsAtInit default value is true, if we want to use tidb standby mode, it need to set system env EnvRegisterMetricsAtInit=false
-	isRegisterMetricsAtInit = getEnvIsMetricsRegisterAtInit()
+	// IsRegisterMetricsAtInit default value is true, if we want to use tidb standby mode, it need to set system env EnvRegisterMetricsAtInit=false
+	IsRegisterMetricsAtInit = getEnvIsMetricsRegisterAtInit()
 
 	// InitializedCollector used to mark the metics collector are initialized or not
 	InitializedCollector = false
@@ -117,10 +117,10 @@ func InitRegisterMetrics() bool {
 
 	DefineMetrics()
 
-	// If it's a `make gotest` or run a `go test` it's need to register at init, the `isRegisterMetricsAtInit` is true.
+	// If it's a `make gotest` or run a `go test` it's need to register at init, the `IsRegisterMetricsAtInit` is true.
 	// If it's a real TiDB server and run in serverless cluster, it need to set the system env `export REGISTER_METRICS_INIT=false`,
 	// and the metrics will register later when exit serverless standby mode.
-	if isRegisterMetricsAtInit {
+	if IsRegisterMetricsAtInit {
 		log.Info("register metrics when metrics init.")
 		RegisterMetrics()
 	}

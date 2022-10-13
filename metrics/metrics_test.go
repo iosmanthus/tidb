@@ -29,10 +29,10 @@ func TestMetrics(_ *testing.T) {
 
 func TestRegisterMetrics(t *testing.T) {
 	// Make sure it doesn't panic.
-	isRegisterMetricsAtInit = false
+	IsRegisterMetricsAtInit = false
 	require.NotPanics(t, func() { InitRegisterMetrics() })
 
-	isRegisterMetricsAtInit = true
+	IsRegisterMetricsAtInit = true
 	require.PanicsWithError(t, "duplicate metrics collector registration attempted", func() { InitRegisterMetrics() })
 }
 

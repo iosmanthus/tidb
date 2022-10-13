@@ -15,6 +15,7 @@
 package infoschema
 
 import (
+	"github.com/pingcap/log"
 	"github.com/pingcap/tidb/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -35,6 +36,7 @@ func init() {
 
 // InitMetricsVars init infoschema metrics counter
 func InitMetricsVars() {
+	log.Info("init infoschema metrics")
 	getLatestCounter = metrics.InfoCacheCounters.WithLabelValues("get", "latest")
 	getTSCounter = metrics.InfoCacheCounters.WithLabelValues("get", "ts")
 	getVersionCounter = metrics.InfoCacheCounters.WithLabelValues("get", "version")

@@ -15,6 +15,7 @@
 package handle
 
 import (
+	"github.com/pingcap/log"
 	"github.com/pingcap/tidb/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -36,6 +37,7 @@ func init() {
 
 // InitMetricsVars init statistics metrics counter
 func InitMetricsVars() {
+	log.Info("init handle metrics")
 	missCounter = metrics.StatsCacheLRUCounter.WithLabelValues("miss")
 	hitCounter = metrics.StatsCacheLRUCounter.WithLabelValues("hit")
 	updateCounter = metrics.StatsCacheLRUCounter.WithLabelValues("update")

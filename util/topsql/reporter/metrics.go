@@ -15,6 +15,7 @@
 package reporter
 
 import (
+	"github.com/pingcap/log"
 	"github.com/pingcap/tidb/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -44,6 +45,7 @@ func init() {
 
 // InitMetricsVars init reporter metrics counter
 func InitMetricsVars() {
+	log.Info("init reporter metrics")
 	ignoreExceedSQLCounter = metrics.TopSQLIgnoredCounter.WithLabelValues("ignore_exceed_sql")
 	ignoreExceedPlanCounter = metrics.TopSQLIgnoredCounter.WithLabelValues("ignore_exceed_plan")
 	ignoreCollectChannelFullCounter = metrics.TopSQLIgnoredCounter.WithLabelValues("ignore_collect_channel_full")

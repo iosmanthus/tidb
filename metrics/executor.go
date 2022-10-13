@@ -27,6 +27,8 @@ var (
 
 	// DbStmtNodeCounter records the number of statement with the same type and db.
 	DbStmtNodeCounter *prometheus.CounterVec
+
+	LastStmtTimestamp int64 = 0
 )
 
 func DefineExecutorMetrics() {
@@ -57,4 +59,5 @@ func DefineExecutorMetrics() {
 			Name:      "statement_db_total",
 			Help:      "Counter of StmtNode by Database.",
 		}, []string{LblDb, LblType})
+
 }

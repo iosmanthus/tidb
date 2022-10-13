@@ -36,9 +36,11 @@ import (
 	"github.com/pingcap/tidb/bindinfo"
 	"github.com/pingcap/tidb/config"
 	"github.com/pingcap/tidb/ddl"
+	"github.com/pingcap/tidb/distsql"
 	"github.com/pingcap/tidb/domain"
 	"github.com/pingcap/tidb/domain/infosync"
 	"github.com/pingcap/tidb/executor"
+	"github.com/pingcap/tidb/infoschema"
 	"github.com/pingcap/tidb/kv"
 	"github.com/pingcap/tidb/metrics"
 	"github.com/pingcap/tidb/parser/mysql"
@@ -54,6 +56,7 @@ import (
 	"github.com/pingcap/tidb/sessionctx/variable"
 	"github.com/pingcap/tidb/standby"
 	"github.com/pingcap/tidb/statistics"
+	statshandler "github.com/pingcap/tidb/statistics/handle"
 	kvstore "github.com/pingcap/tidb/store"
 	"github.com/pingcap/tidb/store/driver"
 	"github.com/pingcap/tidb/store/mockstore"
@@ -74,6 +77,7 @@ import (
 	storageSys "github.com/pingcap/tidb/util/sys/storage"
 	"github.com/pingcap/tidb/util/systimemon"
 	"github.com/pingcap/tidb/util/topsql"
+	"github.com/pingcap/tidb/util/topsql/reporter"
 	"github.com/pingcap/tidb/util/versioninfo"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/push"
@@ -384,9 +388,21 @@ func registerStores() {
 	terror.MustNil(err)
 }
 
+func ReInitMetricsVars() {
+	distsql.InitMetricsVars()
+	executor.InitMetricsVars()
+	infoschema.InitMetricsVars()
+	plannercore.InitMetricsVars()
+	server.InitMetricsVars()
+	session.InitMetricsVars()
+	statshandler.InitMetricsVars()
+	reporter.InitMetricsVars()
+}
+
 func registerMetrics() {
 	metrics.DefineMetrics()
 	metrics.RegisterMetrics()
+	ReInitMetricsVars()
 	if config.GetGlobalConfig().Store == "unistore" {
 		uni_metrics.RegisterMetrics()
 	}
