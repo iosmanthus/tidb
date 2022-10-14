@@ -103,10 +103,13 @@ func EncodePlacementRule(c tikv.Codec, rule *placement.TiFlashRule) error {
 	startKey, endKey = c.EncodeRegionRange(startKey, endKey)
 	rule.StartKeyHex = hex.EncodeToString(startKey)
 	rule.EndKeyHex = hex.EncodeToString(endKey)
+
+	keyspaceID := fmt.Sprintf("%d", keyspace.GetID(c.GetKeyspace()))
+	rule.ID = fmt.Sprintf("%s-%s-%s", keyspaceIDLabel, keyspaceID, rule.ID)
 	err = rule.Constraints.Add(placement.Constraint{
 		Key:    keyspaceIDLabel,
 		Op:     placement.In,
-		Values: []string{fmt.Sprintf("%d", keyspace.GetID(c.GetKeyspace()))},
+		Values: []string{keyspaceID},
 	})
 
 	return err
@@ -230,7 +233,36 @@ func (m *TiFlashPDPlacementManager) GetStoresStat(ctx context.Context) (*helper.
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
+
+	if m.codec.GetAPIVersion() == kvrpcpb.APIVersion_V2 {
+		vs := filterStores(storesStat, m.codec)
+		storesStat.Stores = vs
+		storesStat.Count = len(vs)
+	}
+
 	return &storesStat, err
+}
+
+func filterStores(stats helper.StoresStat, c tikv.Codec) []helper.StoreStat {
+	var visibleStores []helper.StoreStat
+	for _, s := range stats.Stores {
+		keyspaceID := fmt.Sprintf("%d", keyspace.GetID(c.GetKeyspace()))
+		lm := labelsToMap(s.Store.Labels)
+		if lm["engine"] == "tiflash" && lm[keyspaceIDLabel] != keyspaceID {
+			continue
+		}
+		visibleStores = append(visibleStores, s)
+	}
+
+	return visibleStores
+}
+
+func labelsToMap(labels []helper.StoreLabel) map[string]string {
+	m := make(map[string]string)
+	for _, l := range labels {
+		m[l.Key] = l.Value
+	}
+	return m
 }
 
 type mockTiFlashPlacementManager struct {
