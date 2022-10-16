@@ -880,8 +880,8 @@ github.com/tiancaiamao/appdash v0.0.0-20181126055449-889f96f722a2 h1:mbAskLJ0oJf
 github.com/tiancaiamao/appdash v0.0.0-20181126055449-889f96f722a2/go.mod h1:2PfKggNGDuadAa0LElHrByyrz4JPZ9fFx6Gs7nx7ZZU=
 github.com/tidbcloud/pd-cse/client v0.0.0-20220905061235-4cfe0db56daa h1:Aa2U13dX3kLKivgSXVW2hr7s4c1r4HJKOhJrkYse98s=
 github.com/tidbcloud/pd-cse/client v0.0.0-20220905061235-4cfe0db56daa/go.mod h1:l76QLn0xvJx6k6maY+OmybxJDUnXf5Z4xDsypKRctao=
-github.com/tikv/client-go/v2 v2.0.1-0.20221010081954-bea9aefb633b h1:hwEf2jOaGI0w6/8fQ9ec5qHGKCROY02BLKzZJb4XL8s=
-github.com/tikv/client-go/v2 v2.0.1-0.20221010081954-bea9aefb633b/go.mod h1:jt/Xjx+3A3/bHpxpL9KrdLfXBxTt7b+IzC4yAUFwivU=
+github.com/tikv/client-go/v2 v2.0.1-0.20221015080045-7e5ae51b355d h1:J6JzklX0Vyo/+W/0PTqHwdSluCjgZWKz+pIqSY+nVR4=
+github.com/tikv/client-go/v2 v2.0.1-0.20221015080045-7e5ae51b355d/go.mod h1:jt/Xjx+3A3/bHpxpL9KrdLfXBxTt7b+IzC4yAUFwivU=
 github.com/tklauser/go-sysconf v0.3.9/go.mod h1:11DU/5sG7UexIrp/O6g35hrWzu0JxlwQ3LSFUzyeuhs=
 github.com/tklauser/go-sysconf v0.3.10 h1:IJ1AZGZRWbY8T5Vfk04D9WOA5WSejdflXxP03OUqALw=
 github.com/tklauser/go-sysconf v0.3.10/go.mod h1:C8XykCvCb+Gn0oNCWPIlcb0RuglQTYaQ2hGm7jmxEFk=

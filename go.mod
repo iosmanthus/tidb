@@ -247,4 +247,4 @@ replace honnef.co/go/tools => honnef.co/go/tools v0.3.2
 replace github.com/tikv/pd/client => github.com/tidbcloud/pd-cse/client v0.0.0-20220905061235-4cfe0db56daa
 
 // Use github.com/tikv/client-go/v2@api-v2
-replace github.com/tikv/client-go/v2 => github.com/tikv/client-go/v2 v2.0.1-0.20221010081954-bea9aefb633b
+replace github.com/tikv/client-go/v2 => github.com/tikv/client-go/v2 v2.0.1-0.20221015080045-7e5ae51b355d
