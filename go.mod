@@ -248,3 +248,6 @@ replace github.com/tikv/pd/client => github.com/tidbcloud/pd-cse/client v0.0.0-2
 
 // Use github.com/tikv/client-go/v2@api-v2
 replace github.com/tikv/client-go/v2 => github.com/tikv/client-go/v2 v2.0.1-0.20221015080045-7e5ae51b355d
+
+// Use github.com/tidbcloud/kvproto/release-6.2-dev-tier
+replace github.com/pingcap/kvproto => github.com/tidbcloud/kvproto v0.0.0-20221012070951-7a91ab2a4c7e

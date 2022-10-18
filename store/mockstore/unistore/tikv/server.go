@@ -52,11 +52,6 @@ type Server struct {
 	stopped       int32
 }
 
-func (svr *Server) GetLockWaitHistory(ctx context.Context, request *kvrpcpb.GetLockWaitHistoryRequest) (*kvrpcpb.GetLockWaitHistoryResponse, error) {
-	//TODO implement me
-	panic("unimplemented")
-}
-
 // NewServer returns a new server.
 func NewServer(rm RegionManager, store *MVCCStore, innerServer InnerServer) *Server {
 	return &Server{

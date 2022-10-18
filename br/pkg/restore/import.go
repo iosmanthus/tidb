@@ -588,6 +588,8 @@ func (importer *FileImporter) downloadSST(
 		Name:           file.GetName(),
 		RewriteRule:    *fileRule,
 		CipherInfo:     cipher,
+		// For the older version of TiDB, the request type will be default to `import_sstpb.RequestType_Legacy`
+		RequestType: import_sstpb.DownloadRequestType_Keyspace,
 	}
 	log.Debug("download SST",
 		logutil.SSTMeta(sstMeta),
