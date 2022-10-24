@@ -41,6 +41,7 @@ import (
 	"github.com/pingcap/tidb/ddl/placement"
 	"github.com/pingcap/tidb/ddl/util"
 	"github.com/pingcap/tidb/domain/infosync"
+	"github.com/pingcap/tidb/keyspace"
 	"github.com/pingcap/tidb/kv"
 	"github.com/pingcap/tidb/metrics"
 	"github.com/pingcap/tidb/parser/model"
@@ -703,19 +704,45 @@ func (w *GCWorker) getAllKeyspace(ctx context.Context) []*keyspacepb.KeyspaceMet
 	return initialLoaded
 }
 
-func (w *GCWorker) isExistsTable(tablename string, store kv.Storage) bool {
+func (w *GCWorker) isExistsTable(db string, tablename string, store kv.Storage) bool {
 	ctx := kv.WithInternalSourceType(context.Background(), kv.InternalTxnGC)
 	se := createSession(store)
 	defer se.Close()
-	rs, err := se.ExecuteInternal(ctx, `SHOW TABLES %? `, tablename)
-	if rs != nil {
-		defer terror.Call(rs.Close)
-	}
+
+	keyspacePrefix := se.GetStore().GetCodec().GetKeyspace()
+	keyspaceId := keyspace.GetID(keyspacePrefix)
+	query_fmt := `SELECT count(1) from INFORMATION_SCHEMA.TABLES  where TABLE_SCHEMA = '%s' and TABLE_NAME = '%s';`
+	query_sql := fmt.Sprintf(query_fmt, db, tablename)
+	rs, err := se.ExecuteInternal(ctx, query_sql, db, tablename)
+
 	if err != nil {
+		logutil.Logger(ctx).Error("exec sql met err", zap.Uint32("keyspaceId:", keyspaceId), zap.String("query", query_sql), zap.String("db", db), zap.String("tablename", tablename), zap.Error(err))
 		return false
 	}
 
-	return true
+	if rs != nil {
+		req := rs.NewChunk(nil)
+		err = rs.Next(ctx, req)
+		if err != nil {
+			logutil.Logger(ctx).Info("System table query err.", zap.Uint32("keyspaceId:", keyspaceId), zap.String("query_sql", query_sql), zap.Error(err))
+			return false
+		}
+
+		count := req.GetRow(0).GetInt64(0)
+
+		if count > 0 {
+			return true
+		} else {
+			logutil.Logger(ctx).Debug("get result", zap.Uint32("keyspaceId:", keyspaceId), zap.String("query_sql:", query_sql), zap.Int64("count", count))
+			return false
+		}
+
+		defer terror.Call(rs.Close)
+	} else {
+		logutil.Logger(ctx).Debug("isExistsTable get result is nil", zap.String("query_sql:", query_sql))
+	}
+
+	return false
 }
 
 func (w *GCWorker) runAllKeyspaceDeleteRanges(ctx context.Context, safePoint uint64, concurrency int) error {
@@ -732,10 +759,12 @@ func (w *GCWorker) runAllKeyspaceDeleteRanges(ctx context.Context, safePoint uin
 
 	// Get all keyspace meta from PD
 	keyspaces := w.getAllKeyspace(ctx)
-
+	logutil.Logger(ctx).Info("[keyspace delteRange] begin to delete range by keyspaces.")
 	for i := range keyspaces {
 		keyspace := keyspaces[i]
 		keyspaceName := keyspace.Name
+
+		logutil.Logger(ctx).Info("[keyspace delteRange] begin delete range by keyspace.", zap.String("keyspaceName", keyspaceName))
 
 		fullStoragePath := fmt.Sprintf("%s://%s?keyspaceName=%s", cfg.Store, cfg.Path, keyspaceName)
 		storage, err := kvstore.New(fullStoragePath)
@@ -745,15 +774,16 @@ func (w *GCWorker) runAllKeyspaceDeleteRanges(ctx context.Context, safePoint uin
 
 		// May be a keyspace is in pd metadata,but the system table is not exists
 		// check deleteRangesTable
-		isExists := w.isExistsTable(util.DeleteRangesTable, storage)
+		isExists := w.isExistsTable("mysql", util.DeleteRangesTable, storage)
 		if !isExists {
-			logutil.Logger(ctx).Info("The keyspace system table is not ready,skip deleteRange.", zap.String("keyspaceName", keyspaceName))
+			logutil.Logger(ctx).Info("[keyspace delteRange] The keyspace system table is not ready,skip deleteRange.", zap.String("keyspaceName", keyspaceName))
 			continue
 		}
 
 		err = w.runDeleteRanges(ctx, safePoint, concurrency, storage)
 		if err != nil {
-			return errors.Trace(err)
+			logutil.Logger(ctx).Info("[keyspace delteRange] runDeleteRanges err.", zap.String("keyspaceName", keyspaceName), zap.Error(errors.Trace(err)))
+			continue
 		}
 	}
 	return nil
