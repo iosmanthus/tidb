@@ -60,7 +60,7 @@ func GetTiDBInfo() string {
 		"TiKV Min Version: %s\n"+
 		"Check Table Before Drop: %v\n"+
 		"Store: %s",
-		"v6.2.0-devtier",
+		mysql.TiDBReleaseVersionFixed,
 		versioninfo.TiDBEdition,
 		versioninfo.TiDBGitHash,
 		versioninfo.TiDBGitBranch,
