@@ -2631,6 +2631,7 @@ func CreateSession4Test(store kv.Storage) (Session, error) {
 // Opt describes the option for creating session
 type Opt struct {
 	PreparedPlanCache *kvcache.SimpleLRUCache
+	RunDDLjob         bool
 }
 
 // CreateSession4TestWithOpt creates a new session environment for test.
@@ -2773,8 +2774,8 @@ func BootstrapSession(store kv.Storage) (*domain.Domain, error) {
 	if err != nil {
 		return nil, err
 	}
-	ver := getStoreBootstrapVersion(store)
-	if ver == notBootstrapped {
+	ver := GetStoreBootstrapVersion(store)
+	if ver == NotBootstrapped {
 		runInBootstrapSession(store, bootstrap)
 	} else if ver < currentBootstrapVersion {
 		runInBootstrapSession(store, upgrade)
@@ -2983,10 +2984,10 @@ func CreateSessionWithDomain(store kv.Storage, dom *domain.Domain) (*session, er
 }
 
 const (
-	notBootstrapped = 0
+	NotBootstrapped = 0
 )
 
-func getStoreBootstrapVersion(store kv.Storage) int64 {
+func GetStoreBootstrapVersion(store kv.Storage) int64 {
 	storeBootstrappedLock.Lock()
 	defer storeBootstrappedLock.Unlock()
 	// check in memory
@@ -3009,7 +3010,7 @@ func getStoreBootstrapVersion(store kv.Storage) int64 {
 			zap.Error(err))
 	}
 
-	if ver > notBootstrapped {
+	if ver > NotBootstrapped {
 		// here mean memory is not ok, but other server has already finished it
 		storeBootstrapped[store.UUID()] = true
 	}

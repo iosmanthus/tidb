@@ -759,31 +759,32 @@ func (w *GCWorker) runAllKeyspaceDeleteRanges(ctx context.Context, safePoint uin
 
 	// Get all keyspace meta from PD
 	keyspaces := w.getAllKeyspace(ctx)
-	logutil.Logger(ctx).Info("[keyspace delteRange] begin to delete range by keyspaces.")
+	logutil.Logger(ctx).Info("[keyspace deleteRange] begin to delete range by keyspaces.")
 	for i := range keyspaces {
 		keyspace := keyspaces[i]
 		keyspaceName := keyspace.Name
 
-		logutil.Logger(ctx).Info("[keyspace delteRange] begin delete range by keyspace.", zap.String("keyspaceName", keyspaceName))
+		logutil.Logger(ctx).Info("[keyspace deleteRange] begin delete range by keyspace.", zap.String("keyspaceName", keyspaceName))
 
 		fullStoragePath := fmt.Sprintf("%s://%s?keyspaceName=%s", cfg.Store, cfg.Path, keyspaceName)
 		storage, err := kvstore.New(fullStoragePath)
 		if err != nil {
-			return errors.Trace(err)
+			logutil.Logger(ctx).Info("[keyspace deleteRange] kvstore.New met error.skip keyspace deleteRange.", zap.String("fullStoragePath", fullStoragePath), zap.Error(errors.Trace(err)))
+			continue
 		}
 
-		// May be a keyspace is in pd metadata,but the system table is not exists
-		// check deleteRangesTable
-		isExists := w.isExistsTable("mysql", util.DeleteRangesTable, storage)
-		if !isExists {
-			logutil.Logger(ctx).Info("[keyspace delteRange] The keyspace system table is not ready,skip deleteRange.", zap.String("keyspaceName", keyspaceName))
+		bootstrapVersion := session.GetStoreBootstrapVersion(storage)
+		if bootstrapVersion == session.NotBootstrapped {
+			logutil.Logger(ctx).Info("[keyspace deleteRange] The keyspace is not bootstraped,skip keyspace deleteRange.", zap.String("keyspaceName", keyspaceName))
 			continue
 		}
 
 		err = w.runDeleteRanges(ctx, safePoint, concurrency, storage)
 		if err != nil {
-			logutil.Logger(ctx).Info("[keyspace delteRange] runDeleteRanges err.", zap.String("keyspaceName", keyspaceName), zap.Error(errors.Trace(err)))
+			logutil.Logger(ctx).Info("[keyspace deleteRange] runDeleteRanges err.", zap.String("keyspaceName", keyspaceName), zap.Error(errors.Trace(err)))
 			continue
+		} else {
+			logutil.Logger(ctx).Info("[keyspace deleteRange] runDeleteRanges success.", zap.String("keyspaceName", keyspaceName))
 		}
 	}
 	return nil
@@ -862,7 +863,7 @@ func (w *GCWorker) deleteRanges(ctx context.Context, safePoint uint64, concurren
 				zap.Error(err))
 			continue
 		}
-		if err := w.doGCLabelRules(r); err != nil {
+		if err := w.doGCLabelRules(r, se); err != nil {
 			logutil.Logger(ctx).Error("[gc worker] gc label rules failed on range",
 				zap.String("uuid", w.uuid),
 				zap.Int64("jobID", r.JobID),
@@ -2145,7 +2146,7 @@ func (w *GCWorker) doGCPlacementRules(se session.Session, safePoint uint64, dr u
 	return infosync.PutRuleBundlesWithDefaultRetry(context.TODO(), bundles)
 }
 
-func (w *GCWorker) doGCLabelRules(dr util.DelRangeTask) (err error) {
+func (w *GCWorker) doGCLabelRules(dr util.DelRangeTask, se session.Session) (err error) {
 	// Get the job from the job history
 	var historyJob *model.Job
 	failpoint.Inject("mockHistoryJob", func(v failpoint.Value) {
@@ -2160,9 +2161,7 @@ func (w *GCWorker) doGCLabelRules(dr util.DelRangeTask) (err error) {
 		}
 	})
 	if historyJob == nil {
-		se := createSession(w.store)
 		historyJob, err = ddl.GetHistoryJobByID(se, dr.JobID)
-		se.Close()
 		if err != nil {
 			return
 		}

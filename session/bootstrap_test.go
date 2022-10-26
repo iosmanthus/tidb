@@ -862,7 +862,7 @@ func TestIndexMergeInNewCluster(t *testing.T) {
 	store, err := mockstore.NewMockStore()
 	require.NoError(t, err)
 	// Indicates we are in a new cluster.
-	require.Equal(t, int64(notBootstrapped), getStoreBootstrapVersion(store))
+	require.Equal(t, int64(NotBootstrapped), GetStoreBootstrapVersion(store))
 	dom, err := BootstrapSession(store)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, store.Close()) }()

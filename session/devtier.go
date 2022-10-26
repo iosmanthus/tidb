@@ -79,7 +79,7 @@ func runBootstrapSQL(s Session, params map[string]string) bool {
 			fatalLog("Failed to execute template", err)
 		}
 
-		if ts := getBootstrapSQLTimestamp(s.GetStore()); ts != notBootstrapped {
+		if ts := getBootstrapSQLTimestamp(s.GetStore()); ts != NotBootstrapped {
 			logutil.BgLogger().Info("Bootstrap SQL executed successfully by other TiDB server",
 				zap.Duration("take time", time.Since(startTime)),
 				zap.Time("at", oracle.GetTimeFromTS(ts)))
@@ -109,7 +109,7 @@ func RunBootstrapSQL(storage kv.Storage) {
 		return
 	}
 
-	if ts := getBootstrapSQLTimestamp(storage); ts != notBootstrapped {
+	if ts := getBootstrapSQLTimestamp(storage); ts != NotBootstrapped {
 		logutil.BgLogger().Info("Bootstrap SQL already executed",
 			zap.Time("at", oracle.GetTimeFromTS(uint64(ts))))
 		return
