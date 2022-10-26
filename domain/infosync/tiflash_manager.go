@@ -117,12 +117,13 @@ func EncodePlacementRule(c tikv.Codec, rule *placement.TiFlashRule) error {
 
 // SetPlacementRule is a helper function to set placement rule.
 func (m *TiFlashPDPlacementManager) SetPlacementRule(ctx context.Context, rule placement.TiFlashRule) error {
-	if rule.Count == 0 {
-		return m.DeletePlacementRule(ctx, rule.GroupID, rule.ID)
-	}
 	err := EncodePlacementRule(m.codec, &rule)
 	if err != nil {
 		return err
+	}
+
+	if rule.Count == 0 {
+		return m.DeletePlacementRule(ctx, rule.GroupID, rule.ID)
 	}
 	j, _ := json.Marshal(rule)
 	logutil.BgLogger().Info("SetPlacementRule", zap.String("rule", string(j)))
