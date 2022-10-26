@@ -60,10 +60,35 @@ func GetTiDBInfo() string {
 		"TiKV Min Version: %s\n"+
 		"Check Table Before Drop: %v\n"+
 		"Store: %s",
-		mysql.TiDBReleaseVersionFixed,
+		"v6.2.0-devtier",
 		versioninfo.TiDBEdition,
 		versioninfo.TiDBGitHash,
 		versioninfo.TiDBGitBranch,
+		versioninfo.TiDBBuildTS,
+		buildVersion,
+		israce.RaceEnabled,
+		versioninfo.TiKVMinVersion,
+		config.CheckTableBeforeDrop,
+		config.GetGlobalConfig().Store,
+	)
+}
+
+// GetTiDBInfo returns the git hash and build time of this tidb-server binary. when use execute "select tidb_version()"
+func GetTiDBInfoInSQL() string {
+	return fmt.Sprintf("Release Version: %s\n"+
+		"Edition: %s\n"+
+		"Git Commit Hash: %s\n"+
+		"Git Branch: %s\n"+
+		"UTC Build Time: %s\n"+
+		"GoVersion: %s\n"+
+		"Race Enabled: %v\n"+
+		"TiKV Min Version: %s\n"+
+		"Check Table Before Drop: %v\n"+
+		"Store: %s",
+		mysql.ServerlessTiDBReleaseVersionFixed,
+		versioninfo.TiDBEdition,
+		versioninfo.TiDBGitHash,
+		versioninfo.ServerlessTiDBGitBranch,
 		versioninfo.TiDBBuildTS,
 		buildVersion,
 		israce.RaceEnabled,
