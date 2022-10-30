@@ -282,6 +282,9 @@ type Config struct {
 	BootstrapSQLFile string `toml:"bootstrap-sql-file" json:"bootstrap-sql-file"`
 	// BootstrapSQLParams is the parameters for bootstrap SQL file.
 	BootstrapSQLParams map[string]string `toml:"bootstrap-sql-params" json:"bootstrap-sql-params"`
+
+	// SkipGCDropTable is used to control whether to skip gc drop table range in gc worker.
+	SkipGCDropTable bool `toml:"skip-gc-drop-table" json:"skip-gc-drop-table"`
 }
 
 // UpdateTempStoragePath is to update the `TempStoragePath` if port/statusPort was changed
@@ -960,6 +963,7 @@ var defaultConf = Config{
 	NewCollationsEnabledOnFirstBootstrap: true,
 	EnableGlobalKill:                     true,
 	TrxSummary:                           DefaultTrxSummary(),
+	SkipGCDropTable:                      true,
 }
 
 var (

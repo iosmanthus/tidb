@@ -672,7 +672,13 @@ func (w *GCWorker) runGCJob(ctx context.Context, safePoint uint64, concurrency i
 	// Sleep to wait for all other tidb instances update their safepoint cache.
 	time.Sleep(gcSafePointCacheInterval)
 
-	w.runAllKeyspaceDeleteRanges(ctx, safePoint, concurrency)
+	cfg := config.GetGlobalConfig()
+	isSkipGCDropTable := cfg.SkipGCDropTable
+	if !isSkipGCDropTable {
+		w.runAllKeyspaceDeleteRanges(ctx, safePoint, concurrency)
+	} else {
+		logutil.Logger(ctx).Info("Skip GC Drop Table", zap.Bool("isSkipGCDropTable", isSkipGCDropTable))
+	}
 
 	if w.checkUseDistributedGC() {
 		err = w.uploadSafePointToPD(ctx, safePoint)
