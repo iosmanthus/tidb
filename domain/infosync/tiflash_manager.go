@@ -235,19 +235,25 @@ func (m *TiFlashPDPlacementManager) GetStoresStat(ctx context.Context) (*helper.
 		return nil, errors.Trace(err)
 	}
 
-	if m.codec.GetAPIVersion() == kvrpcpb.APIVersion_V2 {
-		vs := filterStores(storesStat, m.codec)
-		storesStat.Stores = vs
-		storesStat.Count = len(vs)
-	}
+	// TODO: remove stores filter while tiflash support multi-tenant.
+	vs := filterStores(storesStat, m.codec)
+	storesStat.Stores = vs
+	storesStat.Count = len(vs)
 
 	return &storesStat, err
 }
 
 func filterStores(stats helper.StoresStat, c tikv.Codec) []helper.StoreStat {
-	var visibleStores []helper.StoreStat
+	var (
+		visibleStores []helper.StoreStat
+		keyspaceID    string
+	)
+
+	if c.GetAPIVersion() == kvrpcpb.APIVersion_V2 {
+		keyspaceID = fmt.Sprintf("%v", keyspace.GetID(c.GetKeyspace()))
+	}
+
 	for _, s := range stats.Stores {
-		keyspaceID := fmt.Sprintf("%d", keyspace.GetID(c.GetKeyspace()))
 		lm := labelsToMap(s.Store.Labels)
 		if lm["engine"] == "tiflash" && lm[keyspaceIDLabel] != keyspaceID {
 			continue
