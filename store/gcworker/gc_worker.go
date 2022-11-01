@@ -352,10 +352,6 @@ func (w *GCWorker) leaderTick(ctx context.Context) error {
 		zap.String("uuid", w.uuid),
 		zap.Uint64("safePoint", safePoint),
 		zap.Int("concurrency", concurrency))
-
-	ddl.RunWorker = false
-	logutil.Logger(ctx).Info("gc worker has been bootstrapped. Set ddl.RunWorker = false, to avoid trigger the election of ddl owner by createSession of deleteRange.")
-
 	go func() {
 		w.done <- w.runGCJob(ctx, safePoint, concurrency)
 	}()
@@ -646,7 +642,6 @@ func (w *GCWorker) runGCJob(ctx context.Context, safePoint uint64, concurrency i
 		failpoint.Return(errors.New("mock failure of runGCJoB"))
 	})
 	metrics.GCWorkerCounter.WithLabelValues("run_job").Inc()
-
 	usePhysical, err := w.checkUsePhysicalScanLock()
 	if err != nil {
 		return errors.Trace(err)
