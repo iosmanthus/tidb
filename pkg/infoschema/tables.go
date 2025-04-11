@@ -218,8 +218,8 @@ const (
 	TableTiDBIndexUsage = "TIDB_INDEX_USAGE"
 	// TableTiDBPlanCache is the plan cache table.
 	TableTiDBPlanCache = "TIDB_PLAN_CACHE"
-	// TableKeyspaceMeta is the table to show the keyspace meta.
-	TableKeyspaceMeta = "KEYSPACE_META"
+	// TableTiDBKeyspaceMeta is the table to show the keyspace meta of the TiDB cluster.
+	TableTiDBKeyspaceMeta = "TIDB_KEYSPACE_META"
 )
 
 const (
@@ -348,7 +348,7 @@ var tableIDMap = map[string]int64{
 	ClusterTableTiDBPlanCache:            autoid.InformationSchemaDBID + 97,
 	TableTiDBStatementsStats:             autoid.InformationSchemaDBID + 98,
 	ClusterTableTiDBStatementsStats:      autoid.InformationSchemaDBID + 99,
-	TableKeyspaceMeta:                    autoid.InformationSchemaDBID + 100,
+	TableTiDBKeyspaceMeta:                autoid.InformationSchemaDBID + 100,
 }
 
 // columnInfo represents the basic column information of all kinds of INFORMATION_SCHEMA tables
@@ -1854,7 +1854,7 @@ var tablePlanCache = []columnInfo{
 	{name: "LAST_ACTIVE_TIME", tp: mysql.TypeDatetime, size: 19},
 }
 
-var tableKeyspaceMetaCols = []columnInfo{
+var tableTiDBKeyspaceMetaCols = []columnInfo{
 	{name: "KEYSPACE_NAME", tp: mysql.TypeVarchar, size: 128},
 	{name: "KEYSPACE_ID", tp: mysql.TypeVarchar, size: 64},
 	{name: "CONFIG", tp: mysql.TypeJSON, size: types.UnspecifiedLength},
@@ -2505,7 +2505,7 @@ var tableNameToColumns = map[string][]columnInfo{
 	TableKeywords:                           tableKeywords,
 	TableTiDBIndexUsage:                     tableTiDBIndexUsage,
 	TableTiDBPlanCache:                      tablePlanCache,
-	TableKeyspaceMeta:                       tableKeyspaceMetaCols,
+	TableTiDBKeyspaceMeta:                   tableTiDBKeyspaceMetaCols,
 }
 
 func createInfoSchemaTable(_ autoid.Allocators, _ func() (pools.Resource, error), meta *model.TableInfo) (table.Table, error) {

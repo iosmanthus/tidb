@@ -237,7 +237,7 @@ func (e *memtableRetriever) retrieve(ctx context.Context, sctx sessionctx.Contex
 			err = e.setDataFromPlanCache(ctx, sctx, false)
 		case infoschema.ClusterTableTiDBPlanCache:
 			err = e.setDataFromPlanCache(ctx, sctx, true)
-		case infoschema.TableKeyspaceMeta:
+		case infoschema.TableTiDBKeyspaceMeta:
 			err = e.setDataForKeyspaceMeta(sctx)
 		}
 		if err != nil {

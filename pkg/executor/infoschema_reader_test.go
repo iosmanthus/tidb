@@ -1309,7 +1309,7 @@ func TestKeyspaceMeta(t *testing.T) {
 	store := testkit.CreateMockStore(t, mockstore.WithKeyspaceMeta(keyspaceMeta))
 	tk := testkit.NewTestKit(t, store)
 
-	rows := tk.MustQuery("select * from information_schema.keyspace_meta").Rows()
+	rows := tk.MustQuery("SELECT * FROM INFORMATION_SCHEMA.TIDB_KEYSPACE_META").Rows()
 	require.Equal(t, 1, len(rows))
 	require.Equal(t, keyspaceMeta.Name, rows[0][0])
 	require.Equal(t, fmt.Sprintf("%d", keyspaceMeta.Id), rows[0][1])
